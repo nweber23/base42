@@ -1,0 +1,410 @@
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { User, Project } from '../models';
+import { createUserCached, updateUserCached, getUserByLoginCached, createProjectCached } from './cachedDb';
+
+// 42 API Base URL
+const API_BASE_URL = 'https://api.intra.42.fr';
+
+// OAuth2 Token interface
+interface OAuth2Token {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  created_at: number;
+}
+
+// 42 API Response interfaces
+interface Api42User {
+  id: number;
+  email: string;
+  login: string;
+  first_name: string;
+  last_name: string;
+  usual_full_name: string;
+  usual_first_name: string;
+  url: string;
+  phone: string;
+  displayname: string;
+  kind: string;
+  image: {
+    link: string;
+    versions: {
+      large: string;
+      medium: string;
+      small: string;
+      micro: string;
+    };
+  };
+  staff: boolean;
+  correction_point: number;
+  pool_month: string;
+  pool_year: string;
+  location: string | null;
+  wallet: number;
+  anonymize_date: string;
+  data_erasure_date: string | null;
+  created_at: string;
+  updated_at: string;
+  alumnized_at: string | null;
+  alumni: boolean;
+  active: boolean;
+  cursus_users: Array<{
+    grade: string;
+    level: number;
+    skills: Array<{
+      id: number;
+      name: string;
+      level: number;
+    }>;
+    blackholed_at: string | null;
+    id: number;
+    begin_at: string;
+    end_at: string | null;
+    cursus_id: number;
+    has_coalition: boolean;
+    created_at: string;
+    updated_at: string;
+    user: {
+      id: number;
+      login: string;
+      url: string;
+    };
+    cursus: {
+      id: number;
+      created_at: string;
+      name: string;
+      slug: string;
+      kind: string;
+    };
+  }>;
+  projects_users: Array<{
+    id: number;
+    occurrence: number;
+    final_mark: number | null;
+    status: string;
+    validated: boolean | null;
+    current_team_id: number | null;
+    project: {
+      id: number;
+      name: string;
+      slug: string;
+      description: string;
+      created_at: string;
+      updated_at: string;
+      exam: boolean;
+    };
+    cursus_ids: number[];
+    marked_at: string | null;
+    marked: boolean;
+    retriable_at: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+  campus: Array<{
+    id: number;
+    name: string;
+    time_zone: string;
+    language: {
+      id: number;
+      name: string;
+      identifier: string;
+      created_at: string;
+      updated_at: string;
+    };
+    users_count: number;
+    vogsphere_id: number;
+    country: string;
+    address: string;
+    zip: string;
+    city: string;
+    website: string;
+    facebook: string;
+    twitter: string;
+    active: boolean;
+    public: boolean;
+    email_extension: string;
+    default_hidden_phone: boolean;
+  }>;
+}
+
+interface Api42ProjectUser {
+  id: number;
+  occurrence: number;
+  final_mark: number | null;
+  status: string;
+  validated: boolean | null;
+  current_team_id: number | null;
+  project: {
+    id: number;
+    name: string;
+    slug: string;
+    description: string;
+    created_at: string;
+    updated_at: string;
+    exam: boolean;
+  };
+  teams: Array<{
+    id: number;
+    name: string;
+    url: string;
+    final_mark: number | null;
+    project_id: number;
+    created_at: string;
+    updated_at: string;
+    status: string;
+    terminating_at: string | null;
+    users: Array<{
+      id: number;
+      login: string;
+      url: string;
+      leader: boolean;
+      occurrence: number;
+      validated: boolean;
+      projects_user_id: number;
+    }>;
+    locked: boolean;
+    validated: boolean | null;
+    closed: boolean;
+    repo_url: string | null;
+    repo_uuid: string;
+    locked_at: string | null;
+    closed_at: string | null;
+    project_session_id: number;
+    project_gitlab_path: string | null;
+  }>;
+  cursus_ids: number[];
+  marked_at: string | null;
+  marked: boolean;
+  retriable_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+class Api42Service {
+  private axiosInstance: AxiosInstance;
+  private token: OAuth2Token | null = null;
+  private tokenExpiresAt: number = 0;
+
+  constructor() {
+    this.axiosInstance = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 10000,
+    });
+  }
+
+  /**
+   * Authenticate with 42 API using OAuth2 client credentials
+   */
+  private async authenticate(): Promise<void> {
+    const apiUid = process.env.API_UID;
+    const apiSecret = process.env.API_SECRET;
+
+    if (!apiUid || !apiSecret) {
+      throw new Error('API_UID and API_SECRET must be provided in environment variables');
+    }
+
+    try {
+      const response: AxiosResponse<OAuth2Token> = await axios.post(
+        `${API_BASE_URL}/oauth/token`,
+        {
+          grant_type: 'client_credentials',
+          client_id: apiUid,
+          client_secret: apiSecret,
+        }
+      );
+
+      this.token = response.data;
+      this.tokenExpiresAt = Date.now() + (this.token.expires_in * 1000);
+
+      // Set default authorization header
+      this.axiosInstance.defaults.headers.common['Authorization'] = 
+        `${this.token.token_type} ${this.token.access_token}`;
+
+      console.log('42 API authentication successful');
+    } catch (error) {
+      console.error('Failed to authenticate with 42 API:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure we have a valid token, refresh if necessary
+   */
+  private async ensureAuthenticated(): Promise<void> {
+    if (!this.token || Date.now() >= this.tokenExpiresAt - 60000) { // Refresh 1 minute before expiry
+      await this.authenticate();
+    }
+  }
+
+  /**
+   * Map 42 API user data to our User model
+   */
+  private mapApi42UserToUser(api42User: Api42User): Omit<User, 'id'> {
+    // Get the main cursus (42cursus) information
+    const mainCursus = api42User.cursus_users.find(cu => cu.cursus.slug === '42cursus') || api42User.cursus_users[0];
+    
+    // Get primary campus
+    const primaryCampus = api42User.campus[0];
+
+    // Extract favorites/skills as strings
+    const favorites = mainCursus?.skills?.map(skill => skill.name) || [];
+
+    return {
+      login: api42User.login,
+      name: api42User.usual_full_name || `${api42User.first_name} ${api42User.last_name}`,
+      level: mainCursus?.level || 0,
+      campus: primaryCampus?.name || 'Unknown',
+      location: api42User.location || '',
+      favorites: favorites.slice(0, 10) // Limit to top 10 skills
+    };
+  }
+
+  /**
+   * Map 42 API project data to our Project model
+   */
+  private mapApi42ProjectToProject(projectUser: Api42ProjectUser): Omit<Project, 'id'> {
+    // Get team information
+    const team = projectUser.teams[0]; // Get the first/current team
+    const teammates = team?.users?.map(user => user.login) || [];
+
+    // Calculate deadline based on team terminating_at or use a default
+    let deadline = new Date();
+    if (team?.terminating_at) {
+      deadline = new Date(team.terminating_at);
+    } else {
+      // Default to 30 days from creation if no deadline
+      deadline = new Date(projectUser.created_at);
+      deadline.setDate(deadline.getDate() + 30);
+    }
+
+    return {
+      name: projectUser.project.name,
+      deadline: deadline.toISOString(),
+      teammates: teammates
+    };
+  }
+
+  /**
+   * Fetch user profile from 42 API by login
+   */
+  public async fetchUserProfile(login: string): Promise<User> {
+    await this.ensureAuthenticated();
+
+    try {
+      const response: AxiosResponse<Api42User> = await this.axiosInstance.get(`/v2/users/${login}`);
+      const api42User = response.data;
+
+      // Map to our User model
+      const userData = this.mapApi42UserToUser(api42User);
+
+      // Check if user exists in our database
+      const existingUser = await getUserByLoginCached(login);
+
+      let user: User;
+      if (existingUser) {
+        // Update existing user
+        user = await updateUserCached(existingUser.id, userData) as User;
+        console.log(`Updated user profile for ${login}`);
+      } else {
+        // Create new user
+        user = await createUserCached(userData);
+        console.log(`Created new user profile for ${login}`);
+      }
+
+      return user;
+    } catch (error) {
+      console.error(`Failed to fetch user profile for ${login}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch user projects from 42 API
+   */
+  public async fetchUserProjects(login: string): Promise<Project[]> {
+    await this.ensureAuthenticated();
+
+    try {
+      const response: AxiosResponse<Api42ProjectUser[]> = await this.axiosInstance.get(
+        `/v2/users/${login}/projects_users`
+      );
+      const api42Projects = response.data;
+
+      const projects: Project[] = [];
+
+      // Process each project
+      for (const projectUser of api42Projects) {
+        try {
+          // Only process active/ongoing projects
+          if (projectUser.status === 'finished' || projectUser.status === 'parent') {
+            continue;
+          }
+
+          const projectData = this.mapApi42ProjectToProject(projectUser);
+
+          // Create project in database (this will handle duplicates via name constraint if added)
+          const project = await createProjectCached(projectData);
+          projects.push(project);
+
+          console.log(`Synced project ${project.name} for user ${login}`);
+        } catch (error) {
+          console.error(`Failed to sync project ${projectUser.project.name}:`, error);
+          // Continue with other projects even if one fails
+        }
+      }
+
+      console.log(`Synced ${projects.length} projects for user ${login}`);
+      return projects;
+    } catch (error) {
+      console.error(`Failed to fetch projects for user ${login}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync user data (profile + projects) from 42 API
+   */
+  public async syncUserData(login: string): Promise<{ user: User; projects: Project[] }> {
+    console.log(`Starting sync for user ${login}`);
+
+    try {
+      // Fetch user profile and projects in parallel
+      const [user, projects] = await Promise.all([
+        this.fetchUserProfile(login),
+        this.fetchUserProjects(login)
+      ]);
+
+      console.log(`Successfully synced data for user ${login}`);
+      return { user, projects };
+    } catch (error) {
+      console.error(`Failed to sync user data for ${login}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if API is properly configured
+   */
+  public isConfigured(): boolean {
+    return !!(process.env.API_UID && process.env.API_SECRET);
+  }
+
+  /**
+   * Get current authentication status
+   */
+  public isAuthenticated(): boolean {
+    return !!(this.token && Date.now() < this.tokenExpiresAt);
+  }
+}
+
+// Export singleton instance
+export const api42Service = new Api42Service();
+
+// Export individual functions for easier imports
+export const {
+  fetchUserProfile,
+  fetchUserProjects,
+  syncUserData,
+  isConfigured,
+  isAuthenticated
+} = api42Service;

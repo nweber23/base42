@@ -45,7 +45,21 @@ src/
 
 ## API Endpoints
 
+### Core API
 - `GET /ping` - Health check endpoint (returns "pong")
+- `GET /api/users` - List all users (cached)
+- `GET /api/users/:id` - Get user by ID (cached)
+- `GET /api/projects` - List all projects (cached)
+- `GET /api/events` - List all events (cached)
+- `GET /api/messages` - List all messages (cached)
+
+### 42 API Integration
+- `GET /sync/status` - Check 42 API service status
+- `GET /sync/test` - Test 42 API connection
+- `POST /sync/user/:login` - Sync user profile from 42 API
+- `POST /sync/user/:login/projects` - Sync user projects from 42 API
+- `POST /sync/user/:login/complete` - Complete user sync (profile + projects)
+- `POST /sync/users/bulk` - Bulk sync multiple users (max 10)
 
 ## Environment Variables
 
