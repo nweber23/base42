@@ -6,6 +6,7 @@ import { initializeDatabase } from './services/db';
 import { initializeCache } from './services/cache';
 import apiRoutes from './routes/api';
 import syncRoutes from './routes/sync';
+import authRoutes from './routes/auth';
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +22,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Routes
 app.use('/api', apiRoutes);
 app.use('/sync', syncRoutes);
+app.use('/auth', authRoutes);
 
 // Test endpoint
 app.get('/ping', (req, res) => {

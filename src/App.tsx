@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { UserProvider } from './contexts/UserContext';
+import { UserProvider, useUser } from './contexts/UserContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
@@ -8,9 +8,26 @@ import Projects from './pages/Projects';
 import Calendar from './pages/Calendar';
 import Profile from './pages/Profile';
 import Messages from './pages/Messages';
+import Login from './pages/Login';
 
 const AppContent: React.FC = () => {
   const { theme } = useTheme();
+  const { isAuthenticated, isLoading, login } = useUser();
+  
+  if (isLoading) {
+    return (
+      <div className={`min-h-screen ${theme.bg.primary} flex items-center justify-center`}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className={`${theme.text.primary} text-lg`}>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return <Login onLogin={login} />;
+  }
   
   return (
     <div className={`min-h-screen transition-all duration-300 ${theme.bg.primary} relative`}>
@@ -28,6 +45,8 @@ const AppContent: React.FC = () => {
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/auth/success" element={<Login onLogin={login} />} />
+          <Route path="/auth/error" element={<Login onLogin={login} />} />
         </Routes>
         </main>
       </div>

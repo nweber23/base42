@@ -5,7 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 const Navbar = () => {
   const location = useLocation();
-  const { currentUser, users, switchUser } = useUser();
+  const { currentUser, logout, refreshUserData } = useUser();
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -98,44 +98,53 @@ const Navbar = () => {
                 className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${theme.bg.hover} ${theme.text.secondary} transition-all duration-200 transform hover:scale-105`}
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-600">
-                  <span className="text-white font-medium text-sm">{currentUser.name.split(' ').map(n => n[0]).join('')}</span>
+                  <span className="text-white font-medium text-sm">{currentUser?.name.split(' ').map(n => n[0]).join('')}</span>
                 </div>
-                <span className="hidden sm:block font-medium">{currentUser.name.split(' ')[0]}</span>
+                <span className="hidden sm:block font-medium">{currentUser?.name.split(' ')[0]}</span>
                 <svg className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               
               {isDropdownOpen && (
-                <div className={`absolute right-0 mt-2 w-72 ${theme.bg.card} rounded-xl shadow-xl border ${theme.border.primary} py-2 z-50 transform transition-all duration-200`}>
-                  <div className={`px-4 py-2 ${theme.text.tertiary} text-xs font-medium border-b ${theme.border.primary}`}>
-                    Switch Account
+                <div className={`absolute right-0 mt-2 w-64 ${theme.bg.card} rounded-xl shadow-xl border ${theme.border.primary} py-2 z-50 transform transition-all duration-200`}>
+                  <div className={`px-4 py-3 border-b ${theme.border.primary}`}>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-medium text-sm">{currentUser?.name.split(' ').map(n => n[0]).join('')}</span>
+                      </div>
+                      <div>
+                        <div className={`font-medium ${theme.text.primary}`}>{currentUser?.name}</div>
+                        <div className={`text-xs ${theme.text.tertiary}`}>{currentUser?.campus} • Level {currentUser?.level}</div>
+                      </div>
+                    </div>
                   </div>
-                  {users.map((user) => (
-                    <button
-                      key={user.id}
-                      onClick={() => {
-                        switchUser(user.id);
-                        setIsDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 text-sm ${theme.bg.hover} flex items-center space-x-3 transition-all duration-200 ${
-                        currentUser.id === user.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : theme.text.primary
-                      }`}
-                    >
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-white font-medium text-sm">{user.name.split(' ').map(n => n[0]).join('')}</span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium">{user.name}</div>
-                        <div className={`text-xs ${theme.text.tertiary}`}>{user.campus} • Level {user.level}</div>
-                      </div>
-                      {currentUser.id === user.id && (
-                        <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
+                  
+                  <button
+                    onClick={() => {
+                      refreshUserData();
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 text-sm ${theme.bg.hover} flex items-center space-x-3 transition-all duration-200 ${theme.text.primary}`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Sync from 42 API
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      logout();
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-4 py-3 text-sm ${theme.bg.hover} flex items-center space-x-3 transition-all duration-200 text-red-600 dark:text-red-400`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Logout
+                  </button>
                 </div>
               )}
             </div>

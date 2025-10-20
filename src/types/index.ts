@@ -11,17 +11,12 @@ export interface SocialLinks {
 
 export interface User {
   id: number;
+  login: string;
   name: string;
-  email: string;
-  role: string;
-  campus: string;
   level: number;
+  campus: string;
   location: string;
-  last_login: string;
   favorites: string[];
-  current_project: ProjectInfo;
-  socials: SocialLinks;
-  events: string[];
 }
 
 export interface Message {
@@ -46,9 +41,8 @@ export interface MessageThread {
 export interface Project {
   id: number;
   name: string;
-  description: string;
-  status: 'active' | 'completed' | 'pending';
-  assignees: User[];
+  deadline: string;
+  teammates: string[];
 }
 
 export interface TeammateRequest {
