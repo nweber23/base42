@@ -6,6 +6,8 @@ import type { User } from '../types';
 
 interface CampusUser extends User {
   isFavorite?: boolean;
+  avatar?: string;
+  begin_at?: string;
 }
 
 const Peers = () => {
@@ -31,9 +33,9 @@ const Peers = () => {
         throw new Error('Failed to fetch campus users');
       }
       const data = await response.json();
-      // Map to your CampusUser type shape if needed
-      let users = (data.peers || []).map((p: any) => ({
-        id: 0, // not provided by endpoint
+      // Map to CampusUser using backend-provided ids and avatars
+      let users: CampusUser[] = (data.peers || []).map((p: any) => ({
+        id: p.id || 0,
         login: p.login,
         name: p.login,
         level: 0,
@@ -41,6 +43,7 @@ const Peers = () => {
         location: p.host,
         favorites: [],
         begin_at: p.begin_at,
+        avatar: p.avatar,
       }));
       // Remove current user and enrich with favorites as before
       users = users.filter((u: any) => u.login !== currentUser?.login);
@@ -48,7 +51,11 @@ const Peers = () => {
       // Load favorites status for each user
       if (currentUser) {
         const usersWithFavorites = await Promise.all(
-          users.map(async (user: User) => {
+          users.map(async (user: CampusUser) => {
+            // Skip favorite check if peer has no valid DB id yet
+            if (!user.id || user.id === 0) {
+              return { ...user, isFavorite: false };
+            }
             try {
               const favResponse = await fetch(
                 `/api/favorites/${currentUser.id}/is-favorite/${user.id}`
@@ -56,7 +63,7 @@ const Peers = () => {
               const favData = await favResponse.json();
               return {
                 ...user,
-                isFavorite: favData.data?.isFavorite || false
+                isFavorite: !!favData.data?.isFavorite
               };
             } catch (err) {
               return { ...user, isFavorite: false };
@@ -219,19 +226,20 @@ const Peers = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredUsers.map((user) => (
                   <Card
-                    key={user.id}
+                    key={`${user.id}-${user.login}`}
                     hover={true}
                     className="bg-white dark:bg-gray-800 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 relative"
                   >
                     {/* Favorite Button */}
                     <button
                       onClick={() => toggleFavorite(user)}
+                      disabled={!user.id || user.id === 0}
                       className={`absolute top-4 right-4 p-2 rounded-full transition-all duration-200 ${
                         user.isFavorite
                           ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20'
                           : 'text-gray-400 hover:text-yellow-500 hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }`}
-                      title={user.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                      } ${(!user.id || user.id === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={(!user.id || user.id === 0) ? 'Favoriting unavailable for this user yet' : (user.isFavorite ? 'Remove from favorites' : 'Add to favorites')}
                     >
                       <svg className="w-6 h-6" fill={user.isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -240,11 +248,23 @@ const Peers = () => {
 
                     {/* User Avatar */}
                     <div className="flex items-center mb-4">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-4 ring-4 ring-blue-100 dark:ring-blue-900/50 shadow-lg">
-                        <span className="text-white font-bold text-lg">
-                          {user.name.split(' ').map(n => n[0]).join('')}
-                        </span>
-                      </div>
+                      {user.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt={user.login}
+                          className="w-16 h-16 rounded-full object-cover mr-4 ring-4 ring-blue-100 dark:ring-blue-900/50 shadow-lg"
+                          onError={(e) => {
+                            const target = e.currentTarget as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-4 ring-4 ring-blue-100 dark:ring-blue-900/50 shadow-lg">
+                          <span className="text-white font-bold text-lg">
+                            {user.name.split(' ').map(n => n[0]).join('')}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex-1">
                         <h3 className={`text-lg font-bold ${theme.text.primary}`}>{user.name}</h3>
                         <p className={`text-sm ${theme.text.secondary}`}>@{user.login}</p>

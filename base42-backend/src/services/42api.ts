@@ -184,6 +184,7 @@ interface Api42ProjectUser {
 // Cache keys
 const TOKEN_CACHE_KEY = '42api:oauth_token';
 const PEERS_CACHE_KEY = (campusId: number) => `peers:active:${campusId}`;
+const AVATAR_CACHE_KEY = (login: string) => `42api:avatar:${login}`;
 
 // Minimal 42 location shape we need
 interface Api42Location {
@@ -486,21 +487,52 @@ class Api42Service {
   }
 
   // Public: get active peers with 60s caching and stale fallback on errors
-  public async getActivePeers(campusId: number): Promise<{ count: number; peers: Array<{ login: string; host: string; begin_at: string }> }> {
+  public async getActivePeers(campusId: number): Promise<{ count: number; peers: Array<{ id: number; login: string; host: string; begin_at: string; avatar?: string }> }> {
     const cacheKey = PEERS_CACHE_KEY(campusId);
 
     // Fast path: cached list for fallback
-    const cached = await getCache<{ count: number; peers: Array<{ login: string; host: string; begin_at: string }> }>(cacheKey);
+    const cached = await getCache<{ count: number; peers: Array<{ id: number; login: string; host: string; begin_at: string; avatar?: string }> }>(cacheKey);
 
     try {
       const locations = await this.fetchActiveLocations(campusId);
-      const peers = locations
+      const basePeers = locations
         .filter((loc) => !!loc.user?.login && !!loc.host && !!loc.begin_at)
         .map((loc) => ({
           login: loc.user.login,
           host: loc.host,
           begin_at: new Date(loc.begin_at).toISOString(),
         }));
+
+      // Enrich with DB id and avatar
+      const peers = await Promise.all(
+        basePeers.map(async (p) => {
+          // Ensure user exists in DB and get id
+          let dbUser = await getUserByLoginCached(p.login);
+          if (!dbUser) {
+            try {
+              dbUser = await this.fetchUserProfile(p.login);
+            } catch (e) {
+              // ignore; will return id 0
+            }
+          }
+          const id = dbUser?.id ?? 0;
+
+          // Avatar from cache or API
+          let avatar = await getCache<string>(AVATAR_CACHE_KEY(p.login));
+          if (!avatar) {
+            try {
+              const uResp: AxiosResponse<any> = await this.axiosInstance.get(`/v2/users/${p.login}`);
+              avatar = uResp.data?.image?.link || undefined;
+              if (avatar) await setCache(AVATAR_CACHE_KEY(p.login), avatar, 6 * 60 * 60); // 6h TTL
+            } catch (_) {
+              // ignore avatar failures
+            }
+          }
+
+          const normalizedAvatar = avatar || undefined;
+          return { id, avatar: normalizedAvatar, ...p };
+        })
+      );
 
       const payload = { count: peers.length, peers };
 
