@@ -79,6 +79,13 @@ router.get('/callback', async (req: Request, res: Response) => {
     try {
       const syncResult = await api42Service.syncUserData(userLogin);
       
+      // Update last_login timestamp for the user
+      const { updateUser, getUserByLogin } = await import('../services/db');
+      const user = await getUserByLogin(userLogin);
+      if (user) {
+        await updateUser(user.id, { last_login: new Date().toISOString() } as any);
+      }
+      
       // Redirect to frontend with success and user login
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
       res.redirect(`${frontendUrl}/auth/success?login=${encodeURIComponent(userLogin)}`);

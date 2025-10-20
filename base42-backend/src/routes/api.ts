@@ -4,6 +4,7 @@ import projectRoutes from './projects';
 import eventRoutes from './events';
 import messageRoutes from './messages';
 import syncRoutes from './sync';
+import favoritesRoutes from './favorites';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use('/projects', projectRoutes);
 router.use('/events', eventRoutes);
 router.use('/messages', messageRoutes);
 router.use('/sync', syncRoutes);
+router.use('/favorites', favoritesRoutes);
 
 export default router;

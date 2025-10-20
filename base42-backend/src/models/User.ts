@@ -6,4 +6,5 @@ export interface User {
   campus: string;
   location: string;
   favorites: string[];
+  last_login?: string;
 }

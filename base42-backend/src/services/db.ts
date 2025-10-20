@@ -1,5 +1,5 @@
 import { Pool, PoolClient } from 'pg';
-import { User, Project, Event, Message } from '../models';
+import { User, Project, Event, Message, UserFavorite } from '../models';
 
 // Database connection pool
 const pool = new Pool({
@@ -27,7 +27,8 @@ export const initializeDatabase = async (): Promise<void> => {
         level DECIMAL(4,2) NOT NULL DEFAULT 0,
         campus VARCHAR(100) NOT NULL,
         location VARCHAR(100),
-        favorites TEXT[] DEFAULT '{}'
+        favorites TEXT[] DEFAULT '{}',
+        last_login TIMESTAMP DEFAULT NULL
       )
     `);
 
@@ -534,6 +535,118 @@ export const deleteMessage = async (id: number): Promise<boolean> => {
     return result.rowCount !== null && result.rowCount > 0;
   } catch (error) {
     console.error('Error deleting message:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// User Favorites Operations
+export const getUserFavorites = async (userId: number): Promise<User[]> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT u.* FROM users u 
+      JOIN user_favorites uf ON u.id = uf.favorite_user_id 
+      WHERE uf.user_id = $1 
+      ORDER BY u.name
+    `, [userId]);
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching user favorites:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const addUserFavorite = async (userId: number, favoriteUserId: number): Promise<UserFavorite> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'INSERT INTO user_favorites (user_id, favorite_user_id) VALUES ($1, $2) RETURNING *',
+      [userId, favoriteUserId]
+    );
+    return {
+      ...result.rows[0],
+      created_at: result.rows[0].created_at.toISOString()
+    };
+  } catch (error) {
+    console.error('Error adding user favorite:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const removeUserFavorite = async (userId: number, favoriteUserId: number): Promise<boolean> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'DELETE FROM user_favorites WHERE user_id = $1 AND favorite_user_id = $2',
+      [userId, favoriteUserId]
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  } catch (error) {
+    console.error('Error removing user favorite:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const isUserFavorite = async (userId: number, favoriteUserId: number): Promise<boolean> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT 1 FROM user_favorites WHERE user_id = $1 AND favorite_user_id = $2',
+      [userId, favoriteUserId]
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  } catch (error) {
+    console.error('Error checking if user is favorite:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getUsersByCampus = async (campus: string): Promise<User[]> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM users WHERE campus = $1 ORDER BY name',
+      [campus]
+    );
+    return result.rows.map((row: any) => ({
+      ...row,
+      last_login: row.last_login ? row.last_login.toISOString() : null
+    }));
+  } catch (error) {
+    console.error('Error fetching users by campus:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getCurrentlyLoggedInUsersByCampus = async (campus: string): Promise<User[]> => {
+  const client = await pool.connect();
+  try {
+    // Get users who are currently logged in (have a last_login timestamp)
+    const result = await client.query(
+      `SELECT * FROM users 
+       WHERE campus = $1 
+       AND last_login IS NOT NULL 
+       ORDER BY name`,
+      [campus]
+    );
+    return result.rows.map((row: any) => ({
+      ...row,
+      last_login: row.last_login ? row.last_login.toISOString() : null
+    }));
+  } catch (error) {
+    console.error('Error fetching currently logged in users by campus:', error);
     throw error;
   } finally {
     client.release();
