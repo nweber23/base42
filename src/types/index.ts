@@ -22,6 +22,25 @@ export interface User {
   events: string[];
 }
 
+export interface Message {
+  id: string;
+  senderId: number;
+  content: string;
+  timestamp: string;
+  type: 'text' | 'image' | 'file';
+  isRead: boolean;
+}
+
+export interface MessageThread {
+  id: string;
+  participants: number[];
+  messages: Message[];
+  lastActivity: string;
+  isGroup: boolean;
+  groupName?: string;
+  createdAt: string;
+}
+
 export interface User {
   id: number;
   name: string;

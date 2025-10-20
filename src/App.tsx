@@ -6,6 +6,7 @@ import Peers from './pages/Peers';
 import Projects from './pages/Projects';
 import Calendar from './pages/Calendar';
 import Profile from './pages/Profile';
+import Messages from './pages/Messages';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
               <Route path="/peers" element={<Peers />} />
               <Route path="/projects" element={<Projects />} />
               <Route path="/calendar" element={<Calendar />} />
+              <Route path="/messages" element={<Messages />} />
               <Route path="/profile" element={<Profile />} />
             </Routes>
           </main>

@@ -1,0 +1,192 @@
+[
+  {
+    "id": "thread-1",
+    "participants": [1, 2],
+    "isGroup": false,
+    "createdAt": "2025-10-18T10:00:00Z",
+    "lastActivity": "2025-10-20T14:30:00Z",
+    "messages": [
+      {
+        "id": "msg-1-1",
+        "senderId": 1,
+        "content": "Hey Bob! How's the webserv project going?",
+        "timestamp": "2025-10-20T09:15:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-1-2",
+        "senderId": 2,
+        "content": "Hi Alice! It's challenging but making good progress. The HTTP parsing is working now 🎉",
+        "timestamp": "2025-10-20T09:20:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-1-3",
+        "senderId": 1,
+        "content": "That's awesome! I remember struggling with that part too. Are you handling chunked encoding?",
+        "timestamp": "2025-10-20T09:22:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-1-4",
+        "senderId": 2,
+        "content": "Not yet, that's my next challenge. Do you have any tips?",
+        "timestamp": "2025-10-20T14:25:00Z",
+        "type": "text",
+        "isRead": false
+      },
+      {
+        "id": "msg-1-5",
+        "senderId": 1,
+        "content": "Sure! The key is to read the chunk size first, then the chunk data. Let me know if you want to pair program on it!",
+        "timestamp": "2025-10-20T14:30:00Z",
+        "type": "text",
+        "isRead": false
+      }
+    ]
+  },
+  {
+    "id": "thread-2",
+    "participants": [1, 3],
+    "isGroup": false,
+    "createdAt": "2025-10-19T16:00:00Z",
+    "lastActivity": "2025-10-20T13:45:00Z",
+    "messages": [
+      {
+        "id": "msg-2-1",
+        "senderId": 3,
+        "content": "Alice, I saw you completed ft_transcendence! Any advice for the real-time features?",
+        "timestamp": "2025-10-19T16:30:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-2-2",
+        "senderId": 1,
+        "content": "Hey Charlie! WebSockets are your friend for real-time. Socket.io makes it much easier than raw WebSockets.",
+        "timestamp": "2025-10-19T17:15:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-2-3",
+        "senderId": 3,
+        "content": "Thanks! I'm using Rust though, so I'll probably go with tokio-tungstenite. The concurrency model is fascinating!",
+        "timestamp": "2025-10-20T13:45:00Z",
+        "type": "text",
+        "isRead": false
+      }
+    ]
+  },
+  {
+    "id": "thread-3",
+    "participants": [1, 4, 5],
+    "isGroup": true,
+    "groupName": "Study Group 🤓",
+    "createdAt": "2025-10-17T12:00:00Z",
+    "lastActivity": "2025-10-20T11:20:00Z",
+    "messages": [
+      {
+        "id": "msg-3-1",
+        "senderId": 4,
+        "content": "Welcome to our study group everyone! 👋",
+        "timestamp": "2025-10-17T12:05:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-3-2",
+        "senderId": 1,
+        "content": "Thanks for setting this up Diana! Looking forward to collaborating.",
+        "timestamp": "2025-10-17T12:10:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-3-3",
+        "senderId": 5,
+        "content": "Same here! When should we schedule our first session?",
+        "timestamp": "2025-10-17T14:30:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-3-4",
+        "senderId": 4,
+        "content": "How about this Friday at 2 PM? We could go over algorithms and data structures.",
+        "timestamp": "2025-10-18T09:00:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-3-5",
+        "senderId": 1,
+        "content": "Perfect timing! I'll bring my notes on tree traversal algorithms.",
+        "timestamp": "2025-10-18T09:15:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-3-6",
+        "senderId": 5,
+        "content": "I can cover graph algorithms if anyone's interested. Just finished implementing Dijkstra's!",
+        "timestamp": "2025-10-20T11:20:00Z",
+        "type": "text",
+        "isRead": false
+      }
+    ]
+  },
+  {
+    "id": "thread-4",
+    "participants": [1, 2, 3, 4],
+    "isGroup": true,
+    "groupName": "Hackathon Team 2025 🚀",
+    "createdAt": "2025-10-15T14:00:00Z",
+    "lastActivity": "2025-10-20T16:10:00Z",
+    "messages": [
+      {
+        "id": "msg-4-1",
+        "senderId": 2,
+        "content": "Hey team! Excited for the upcoming hackathon. What should we build?",
+        "timestamp": "2025-10-15T14:30:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-4-2",
+        "senderId": 4,
+        "content": "I was thinking we could do something with AI/ML. Maybe a code review assistant?",
+        "timestamp": "2025-10-15T15:45:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-4-3",
+        "senderId": 3,
+        "content": "Love that idea! We could use static analysis + LLM for suggestions.",
+        "timestamp": "2025-10-16T10:20:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-4-4",
+        "senderId": 1,
+        "content": "Great concept! I can handle the frontend, Bob can do backend API, Charlie handles the analysis engine?",
+        "timestamp": "2025-10-16T11:00:00Z",
+        "type": "text",
+        "isRead": true
+      },
+      {
+        "id": "msg-4-5",
+        "senderId": 4,
+        "content": "And I'll work on the ML integration. Let's start a shared repo this week!",
+        "timestamp": "2025-10-20T16:10:00Z",
+        "type": "text",
+        "isRead": false
+      }
+    ]
+  }
+]
