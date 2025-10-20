@@ -1,3 +1,27 @@
+export interface Project {
+  name: string;
+  deadline: string;
+}
+
+export interface SocialLinks {
+  github?: string;
+  linkedin?: string;
+  twitter?: string;
+}
+
+export interface User {
+  id: number;
+  name: string;
+  campus: string;
+  level: number;
+  location: string;
+  last_login: string;
+  favorites: string[];
+  current_project: Project;
+  socials: SocialLinks;
+  events: string[];
+}
+
 export interface User {
   id: number;
   name: string;

@@ -1,20 +1,93 @@
 [
   {
     "id": 1,
-    "name": "John Doe",
-    "email": "john.doe@example.com",
-    "role": "Developer"
+    "name": "Alice Johnson",
+    "campus": "42 Paris",
+    "level": 8.5,
+    "location": "Paris, France",
+    "last_login": "2024-01-15T14:30:00Z",
+    "favorites": ["C", "Python", "Docker", "Git"],
+    "current_project": {
+      "name": "ft_transcendence",
+      "deadline": "2024-02-28"
+    },
+    "socials": {
+      "github": "https://github.com/alice-johnson",
+      "linkedin": "https://linkedin.com/in/alice-johnson",
+      "twitter": "https://twitter.com/alice_codes"
+    },
+    "events": ["Hackathon 2024", "C++ Workshop", "Career Fair"]
   },
   {
     "id": 2,
-    "name": "Jane Smith",
-    "email": "jane.smith@example.com",
-    "role": "Designer"
+    "name": "Bob Chen",
+    "campus": "42 Silicon Valley",
+    "level": 6.2,
+    "location": "San Francisco, CA",
+    "last_login": "2024-01-14T09:15:00Z",
+    "favorites": ["JavaScript", "React", "Node.js", "MongoDB"],
+    "current_project": {
+      "name": "webserv",
+      "deadline": "2024-01-30"
+    },
+    "socials": {
+      "github": "https://github.com/bob-chen",
+      "linkedin": "https://linkedin.com/in/bob-chen"
+    },
+    "events": ["JavaScript Meetup", "Tech Talk Series"]
   },
   {
     "id": 3,
-    "name": "Mike Johnson",
-    "email": "mike.johnson@example.com",
-    "role": "Manager"
+    "name": "Charlie Davis",
+    "campus": "42 London",
+    "level": 4.8,
+    "location": "London, UK",
+    "last_login": "2024-01-13T16:45:00Z",
+    "favorites": ["Rust", "Systems Programming", "Linux", "Vim"],
+    "current_project": {
+      "name": "minishell",
+      "deadline": "2024-01-25"
+    },
+    "socials": {
+      "github": "https://github.com/charlie-davis",
+      "twitter": "https://twitter.com/charlie_rust"
+    },
+    "events": ["Rust Workshop", "Open Source Contribution"]
+  },
+  {
+    "id": 4,
+    "name": "Diana Rodriguez",
+    "campus": "42 Madrid",
+    "level": 12.1,
+    "location": "Madrid, Spain",
+    "last_login": "2024-01-15T11:20:00Z",
+    "favorites": ["C++", "Machine Learning", "Python", "TensorFlow"],
+    "current_project": {
+      "name": "inception",
+      "deadline": "2024-03-15"
+    },
+    "socials": {
+      "github": "https://github.com/diana-rodriguez",
+      "linkedin": "https://linkedin.com/in/diana-rodriguez",
+      "twitter": "https://twitter.com/diana_ml"
+    },
+    "events": ["AI Conference", "Women in Tech", "ML Workshop"]
+  },
+  {
+    "id": 5,
+    "name": "Erik Andersson",
+    "campus": "42 Stockholm",
+    "level": 3.4,
+    "location": "Stockholm, Sweden",
+    "last_login": "2024-01-12T13:10:00Z",
+    "favorites": ["C", "Assembly", "Low-level Programming"],
+    "current_project": {
+      "name": "so_long",
+      "deadline": "2024-01-20"
+    },
+    "socials": {
+      "github": "https://github.com/erik-andersson"
+    },
+    "events": ["Nordic Dev Meetup", "C Programming Workshop"]
   }
 ]
