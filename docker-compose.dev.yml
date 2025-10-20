@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Backend in development mode
+  backend:
+    environment:
+      NODE_ENV: development
+      REDIRECT_URI: ${REDIRECT_URI:-http://localhost:3000/auth/callback}
+    volumes:
+      - ./base42-backend/src:/app/src:ro
+      - ./base42-backend/package.json:/app/package.json:ro
+      - ./base42-backend/tsconfig.json:/app/tsconfig.json:ro
+    command: npm run dev
+
+  # Frontend in development mode (using Vite dev server instead of nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - VITE_API_BASE_URL=http://localhost:5000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./vite.config.ts:/app/vite.config.ts:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./index.html:/app/index.html:ro
+    command: npm run dev -- --host

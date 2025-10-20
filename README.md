@@ -1,4 +1,131 @@
-# Base42
+# base42 - Student Hub for 42 Heilbronn
+
+A full-stack React/Node.js application for 42 students to connect, collaborate, and manage projects.
+
+## Features
+
+- **Dashboard**: Overview of your current project and deadlines
+- **Peers**: Connect with fellow students at your campus  
+- **Projects**: Find teammates and collaborate on assignments
+- **Messages**: Chat with other students and groups
+- **Calendar**: Track events and deadlines
+- **Profile**: Manage your student information
+
+## Tech Stack
+
+- **Frontend**: React 19, TypeScript, Tailwind CSS, Vite
+- **Backend**: Node.js, TypeScript, Express
+- **Database**: PostgreSQL
+- **Cache**: Redis
+- **Authentication**: 42 OAuth API
+- **Containerization**: Docker & Docker Compose
+
+## Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- 42 API credentials (see setup below)
+
+### 1. Initial Setup
+```bash
+make setup
+```
+
+### 2. Configure 42 API
+1. Go to [42 OAuth Applications](https://profile.intra.42.fr/oauth/applications)
+2. Create a new application with:
+   - **Redirect URI**: `http://localhost:3000/auth/callback`
+3. Copy your credentials to `.env` and `base42-backend/.env`:
+   ```env
+   API_UID=your_42_api_uid
+   API_SECRET=your_42_api_secret
+   REDIRECT_URI=http://localhost:3000/auth/callback
+   ```
+
+### 3. Start the Application
+```bash
+# Production mode
+make up
+
+# Development mode (with hot reloading)
+make dev
+```
+
+The application will be available at:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:5000
+- **Database**: localhost:5433
+- **Redis**: localhost:6380
+
+## Available Commands
+
+### Development
+- `make dev` - Start development environment with hot reloading
+- `make dev-frontend` - Start only frontend dev server
+- `make dev-backend` - Start only backend dev server
+
+### Production
+- `make build` - Build all Docker images
+- `make up` - Start all services
+- `make down` - Stop all services
+- `make restart` - Restart all services
+
+### Database
+- `make db-shell` - Connect to PostgreSQL
+- `make db-backup` - Create database backup
+- `make db-restore FILE=backup.sql` - Restore from backup
+
+### Monitoring
+- `make logs` - View all service logs
+- `make logs-backend` - Backend logs only
+- `make logs-frontend` - Frontend logs only
+- `make status` - Check service status
+- `make health` - Health check for all services
+
+### Maintenance
+- `make clean` - Remove all containers, volumes, and images
+- `make lint` - Run linting for both frontend and backend
+
+### 42 API Help
+- `make api-info` - Show 42 API configuration instructions
+
+## Environment Variables
+
+### Backend (`base42-backend/.env`)
+```env
+# Server
+PORT=5000
+NODE_ENV=development
+
+# 42 API
+API_UID=your_42_api_uid
+API_SECRET=your_42_api_secret  
+REDIRECT_URI=http://localhost:3000/auth/callback
+
+# Database
+DB_HOST=postgres
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres123
+DB_NAME=base42
+
+# Redis
+REDIRECT_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=redis123
+```
+
+## Troubleshooting
+
+### Build Issues
+- Ensure Docker daemon is running
+- Check available disk space
+- Run `make clean` to remove old containers
+
+### 42 API Issues
+- Verify API credentials in `.env` files
+- Check redirect URI matches exactly
+- Run `make api-info` for configuration help
 
 A modern React + TypeScript + TailwindCSS application built with Vite.
 

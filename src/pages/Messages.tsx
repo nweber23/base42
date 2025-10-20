@@ -258,7 +258,7 @@ const Messages: React.FC = () => {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
 
   const threads = useMemo(() => {
-    const messageThreads: MessageThread[] = messagesData;
+    const messageThreads: MessageThread[] = messagesData as MessageThread[];
     return messageThreads
       .filter(thread => thread.participants.includes(currentUser.id))
       .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());

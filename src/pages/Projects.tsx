@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { useTheme } from '../contexts/ThemeContext';
 import Card from '../components/Card';
 import type { User } from '../types';
 
@@ -22,7 +21,6 @@ interface CoinflipResult {
 
 const Projects: React.FC = () => {
   const { currentUser, users } = useUser();
-  const { theme } = useTheme();
   const [timeLeft, setTimeLeft] = useState<string>('');
   const [coinflipResult, setCoinflipResult] = useState<CoinflipResult | null>(null);
   const [isFlipping, setIsFlipping] = useState<boolean>(false);
@@ -36,7 +34,7 @@ const Projects: React.FC = () => {
       skillsNeeded: ['C++', 'HTTP', 'Networking'],
       description: 'Need help implementing HTTP server functionality. Looking for someone experienced with socket programming.',
       postedDate: '2025-10-19T10:30:00Z',
-      urgency: 'high'
+      urgency: 'high' as const
     },
     {
       id: 2,
@@ -45,7 +43,7 @@ const Projects: React.FC = () => {
       skillsNeeded: ['C', 'Shell Scripting', 'Process Management'],
       description: 'Working on shell implementation. Could use help with signal handling and process management.',
       postedDate: '2025-10-18T14:15:00Z',
-      urgency: 'medium'
+      urgency: 'medium' as const
     },
     {
       id: 3,
@@ -54,7 +52,7 @@ const Projects: React.FC = () => {
       skillsNeeded: ['C', 'Graphics', 'Game Development'],
       description: 'Building a 2D game. Need someone to help with sprite animations and collision detection.',
       postedDate: '2025-10-17T16:45:00Z',
-      urgency: 'low'
+      urgency: 'low' as const
     },
     {
       id: 4,
@@ -63,7 +61,7 @@ const Projects: React.FC = () => {
       skillsNeeded: ['Docker', 'DevOps', 'System Administration'],
       description: 'Setting up complex Docker infrastructure. Looking for DevOps expertise with container orchestration.',
       postedDate: '2025-10-20T08:20:00Z',
-      urgency: 'medium'
+      urgency: 'medium' as const
     }
   ].filter(request => request.user.id !== currentUser.id);
 

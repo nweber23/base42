@@ -2,6 +2,8 @@
   {
     "id": 1,
     "name": "Alice Johnson",
+    "email": "alice.johnson@student.42heilbronn.de",
+    "role": "student",
     "campus": "42 Heilbronn",
     "level": 8.5,
     "location": "Heilbronn, Germany",
@@ -21,6 +23,8 @@
   {
     "id": 2,
     "name": "Bob Chen",
+    "email": "bob.chen@student.42heilbronn.de",
+    "role": "student",
     "campus": "42 Heilbronn",
     "level": 6.2,
     "location": "Heilbronn, Germany",
@@ -39,6 +43,8 @@
   {
     "id": 3,
     "name": "Charlie Davis",
+    "email": "charlie.davis@student.42heilbronn.de",
+    "role": "student",
     "campus": "42 Heilbronn",
     "level": 4.8,
     "location": "Heilbronn, Germany",
@@ -57,6 +63,8 @@
   {
     "id": 4,
     "name": "Diana Rodriguez",
+    "email": "diana.rodriguez@student.42heilbronn.de",
+    "role": "student",
     "campus": "42 Heilbronn",
     "level": 12.1,
     "location": "Heilbronn, Germany",
@@ -76,6 +84,8 @@
   {
     "id": 5,
     "name": "Erik Andersson",
+    "email": "erik.andersson@student.42heilbronn.de",
+    "role": "student",
     "campus": "42 Heilbronn",
     "level": 3.4,
     "location": "Heilbronn, Germany",

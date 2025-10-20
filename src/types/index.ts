@@ -1,4 +1,4 @@
-export interface Project {
+export interface ProjectInfo {
   name: string;
   deadline: string;
 }
@@ -12,12 +12,14 @@ export interface SocialLinks {
 export interface User {
   id: number;
   name: string;
+  email: string;
+  role: string;
   campus: string;
   level: number;
   location: string;
   last_login: string;
   favorites: string[];
-  current_project: Project;
+  current_project: ProjectInfo;
   socials: SocialLinks;
   events: string[];
 }
@@ -41,19 +43,22 @@ export interface MessageThread {
   createdAt: string;
 }
 
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-}
-
 export interface Project {
   id: number;
   name: string;
   description: string;
   status: 'active' | 'completed' | 'pending';
   assignees: User[];
+}
+
+export interface TeammateRequest {
+  id: number;
+  user: User;
+  project: string;
+  skillsNeeded: string[];
+  description: string;
+  postedDate: string;
+  urgency: 'low' | 'medium' | 'high';
 }
 
 export interface CalendarEvent {

@@ -53,7 +53,7 @@ const Navbar = () => {
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
                     isActive(path)
                       ? `bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 shadow-md`
-                      : `${theme.text.secondary} ${theme.hover} hover:text-blue-600 dark:hover:text-blue-400`
+                      : `${theme.text.secondary} ${theme.bg.hover} hover:text-blue-600 dark:hover:text-blue-400`
                   }`}
                 >
                   {label}
@@ -67,7 +67,7 @@ const Navbar = () => {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-lg ${theme.hover} ${theme.text.secondary} hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 transform hover:scale-110`}
+              className={`p-2 rounded-lg ${theme.bg.hover} ${theme.text.secondary} hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 transform hover:scale-110`}
               title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {isDarkMode ? (
@@ -84,7 +84,7 @@ const Navbar = () => {
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`lg:hidden p-2 rounded-lg ${theme.hover} ${theme.text.secondary} transition-colors duration-200`}
+              className={`lg:hidden p-2 rounded-lg ${theme.bg.hover} ${theme.text.secondary} transition-colors duration-200`}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
@@ -95,7 +95,7 @@ const Navbar = () => {
             <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${theme.hover} ${theme.text.secondary} transition-all duration-200 transform hover:scale-105`}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${theme.bg.hover} ${theme.text.secondary} transition-all duration-200 transform hover:scale-105`}
               >
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-600">
                   <span className="text-white font-medium text-sm">{currentUser.name.split(' ').map(n => n[0]).join('')}</span>
@@ -118,7 +118,7 @@ const Navbar = () => {
                         switchUser(user.id);
                         setIsDropdownOpen(false);
                       }}
-                      className={`w-full text-left px-4 py-3 text-sm ${theme.hover} flex items-center space-x-3 transition-all duration-200 ${
+                      className={`w-full text-left px-4 py-3 text-sm ${theme.bg.hover} flex items-center space-x-3 transition-all duration-200 ${
                         currentUser.id === user.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : theme.text.primary
                       }`}
                     >
@@ -155,7 +155,7 @@ const Navbar = () => {
                 className={`block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200 ${
                   isActive(path)
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : `${theme.text.secondary} ${theme.hover}`
+                    : `${theme.text.secondary} ${theme.bg.hover}`
                 }`}
               >
                 {label}

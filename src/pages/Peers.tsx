@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { useTheme } from '../contexts/ThemeContext';
 import Card from '../components/Card';
 import type { User } from '../types';
 
@@ -124,7 +123,6 @@ const PeerCard: React.FC<PeerCardProps> = ({ peer, isFavorite, onToggleFavorite,
 
 const Peers: React.FC = () => {
   const { currentUser, users } = useUser();
-  const { theme } = useTheme();
   const [localFavorites, setLocalFavorites] = useState<number[]>([]);
 
   const handleToggleFavorite = useCallback((peerId: number) => {
