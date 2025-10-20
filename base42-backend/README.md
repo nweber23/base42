@@ -24,6 +24,61 @@ A Node.js + TypeScript backend server for the Base42 project.
    npm run dev
    ```
 
+## Docker Setup
+
+### Using Docker Compose (Recommended)
+
+1. **Configure environment:**
+   ```bash
+   cp .env.docker .env
+   # Edit .env with your 42 API credentials
+   ```
+
+2. **Start all services:**
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **View logs:**
+   ```bash
+   docker-compose logs -f backend
+   ```
+
+4. **Stop services:**
+   ```bash
+   docker-compose down
+   ```
+
+### Docker Services
+
+- **Backend**: Node.js app running on port 5000
+- **PostgreSQL**: Database on port 5432 with persistent storage
+- **Redis**: Cache on port 6379 with persistent storage
+
+### Docker Commands
+
+```bash
+# Build and start services
+docker-compose up --build
+
+# Start in background
+docker-compose up -d
+
+# View service status
+docker-compose ps
+
+# Execute commands in containers
+docker-compose exec backend sh
+docker-compose exec postgres psql -U postgres -d base42
+docker-compose exec redis redis-cli
+
+# Stop and remove containers
+docker-compose down
+
+# Stop and remove volumes (WARNING: deletes data)
+docker-compose down -v
+```
+
 ## Available Scripts
 
 - `npm run dev` - Start development server with hot reload using nodemon

@@ -1,0 +1,28 @@
+# Development overrides for docker-compose.yml
+# This file is automatically loaded when running docker-compose
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      NODE_ENV: development
+    volumes:
+      # Mount source code for development (optional)
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    # Enable debugging (optional)
+    # ports:
+    #   - "9229:9229"  # Node.js debug port
+
+  postgres:
+    environment:
+      # More verbose logging in development
+      POSTGRES_LOG_STATEMENT: all
+    # Expose additional port for direct access
+    ports:
+      - "5432:5432"
+
+  redis:
+    # Enable Redis CLI access
+    ports:
+      - "6379:6379"

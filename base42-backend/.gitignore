@@ -6,10 +6,18 @@ dist/
 
 # Environment variables
 .env
+.env.local
+.env.docker
 
 # Database and cache data
 postgres_data/
 redis_data/
+
+# Docker
+.docker/
+
+# Logs
+logs/
 
 # OS files
 .DS_Store
