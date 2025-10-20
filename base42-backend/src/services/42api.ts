@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { User, Project } from '../models';
 import { createUserCached, updateUserCached, getUserByLoginCached, createProjectCached } from './cachedDb';
+import { getCache, setCache } from './cache';
 
 // 42 API Base URL
 const API_BASE_URL = 'https://api.intra.42.fr';
@@ -180,6 +181,29 @@ interface Api42ProjectUser {
   updated_at: string;
 }
 
+// Cache keys
+const TOKEN_CACHE_KEY = '42api:oauth_token';
+const PEERS_CACHE_KEY = (campusId: number) => `peers:active:${campusId}`;
+
+// Minimal 42 location shape we need
+interface Api42Location {
+  id: number;
+  begin_at: string;
+  end_at: string | null;
+  host: string;
+  user: {
+    id: number;
+    login: string;
+  };
+}
+
+// Minimal Campus shape for lookup
+interface Api42Campus {
+  id: number;
+  name: string;
+  city?: string;
+}
+
 class Api42Service {
   private axiosInstance: AxiosInstance;
   private token: OAuth2Token | null = null;
@@ -217,8 +241,12 @@ class Api42Service {
       this.tokenExpiresAt = Date.now() + (this.token.expires_in * 1000);
 
       // Set default authorization header
-      this.axiosInstance.defaults.headers.common['Authorization'] = 
+      this.axiosInstance.defaults.headers.common['Authorization'] =
         `${this.token.token_type} ${this.token.access_token}`;
+
+      // Store token in Redis with TTL (2h - 60s buffer)
+      const ttlSec = Math.max(60, (this.token.expires_in ?? 7200) - 60);
+      await setCache(TOKEN_CACHE_KEY, { token: this.token, expiresAt: this.tokenExpiresAt }, ttlSec);
 
       console.log('42 API authentication successful');
     } catch (error) {
@@ -231,9 +259,23 @@ class Api42Service {
    * Ensure we have a valid token, refresh if necessary
    */
   private async ensureAuthenticated(): Promise<void> {
-    if (!this.token || Date.now() >= this.tokenExpiresAt - 60000) { // Refresh 1 minute before expiry
-      await this.authenticate();
+    // In-memory still valid?
+    if (this.token && Date.now() < this.tokenExpiresAt - 60000) {
+      return;
     }
+
+    // Try Redis
+    const cached = await getCache<{ token: OAuth2Token; expiresAt: number }>(TOKEN_CACHE_KEY);
+    if (cached && cached.token && Date.now() < cached.expiresAt - 60000) {
+      this.token = cached.token;
+      this.tokenExpiresAt = cached.expiresAt;
+      this.axiosInstance.defaults.headers.common['Authorization'] =
+        `${this.token.token_type} ${this.token.access_token}`;
+      return;
+    }
+
+    // Fallback to re-authenticate
+    await this.authenticate();
   }
 
   /**
@@ -242,7 +284,7 @@ class Api42Service {
   private mapApi42UserToUser(api42User: Api42User): Omit<User, 'id'> {
     // Get the main cursus (42cursus) information
     const mainCursus = api42User.cursus_users.find(cu => cu.cursus.slug === '42cursus') || api42User.cursus_users[0];
-    
+
     // Get primary campus
     const primaryCampus = api42User.campus[0];
 
@@ -412,17 +454,116 @@ class Api42Service {
   public isAuthenticated(): boolean {
     return !!(this.token && Date.now() < this.tokenExpiresAt);
   }
+
+  // Fetch active campus locations with pagination
+  private async fetchActiveLocations(campusId: number): Promise<Api42Location[]> {
+    await this.ensureAuthenticated();
+
+    const all: Api42Location[] = [];
+    let page = 1;
+    const perPage = 100;
+
+    while (true) {
+      const resp: AxiosResponse<Api42Location[]> = await this.axiosInstance.get(
+        `/v2/campus/${campusId}/locations`,
+        {
+          params: {
+            'filter[active]': true,
+            per_page: perPage,
+            page,
+          },
+        }
+      );
+
+      const batch = resp.data || [];
+      all.push(...batch);
+
+      if (batch.length < perPage) break; // last page
+      page += 1;
+    }
+
+    return all;
+  }
+
+  // Public: get active peers with 60s caching and stale fallback on errors
+  public async getActivePeers(campusId: number): Promise<{ count: number; peers: Array<{ login: string; host: string; begin_at: string }> }> {
+    const cacheKey = PEERS_CACHE_KEY(campusId);
+
+    // Fast path: cached list for fallback
+    const cached = await getCache<{ count: number; peers: Array<{ login: string; host: string; begin_at: string }> }>(cacheKey);
+
+    try {
+      const locations = await this.fetchActiveLocations(campusId);
+      const peers = locations
+        .filter((loc) => !!loc.user?.login && !!loc.host && !!loc.begin_at)
+        .map((loc) => ({
+          login: loc.user.login,
+          host: loc.host,
+          begin_at: new Date(loc.begin_at).toISOString(),
+        }));
+
+      const payload = { count: peers.length, peers };
+
+      // Cache for ~60 seconds
+      await setCache(cacheKey, payload, 60);
+
+      return payload;
+    } catch (error) {
+      if (cached) {
+        return { ...(cached as any), stale: true } as any;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Resolve campus ID by name or numeric input and cache for 24h
+   */
+  public async resolveCampusId(campus: string): Promise<number> {
+    // Numeric ID passed
+    const maybeId = parseInt(campus, 10);
+    if (Number.isFinite(maybeId)) return maybeId;
+
+    const slug = (campus || '').toLowerCase().trim();
+    if (!slug) throw new Error('Campus is required');
+
+    const cacheKey = `42api:campus:id:${slug}`;
+    const cached = await getCache<number>(cacheKey);
+    if (cached) return cached;
+
+    await this.ensureAuthenticated();
+
+    const perPage = 100;
+    let page = 1;
+    let found: Api42Campus | undefined;
+
+    while (!found) {
+      const resp: AxiosResponse<Api42Campus[]> = await this.axiosInstance.get('/v2/campus', {
+        params: { 'filter[active]': true, per_page: perPage, page },
+      });
+      const campuses = resp.data || [];
+      found = campuses.find((c) =>
+        c.name?.toLowerCase().includes(slug) || c.city?.toLowerCase().includes(slug)
+      );
+      if (found || campuses.length < perPage) break;
+      page += 1;
+    }
+
+    if (!found) throw new Error(`Campus "${campus}" not found`);
+
+    // Cache for 24 hours
+    await setCache(cacheKey, found.id, 24 * 60 * 60);
+    return found.id;
+  }
 }
 
 // Export singleton instance
 export const api42Service = new Api42Service();
 
-// Export individual functions for easier imports
-export const {
-  fetchUserProfile,
-  fetchUserProjects,
-  fetchRawUserProjects,
-  syncUserData,
-  isConfigured,
-  isAuthenticated
-} = api42Service;
+// Export wrappers to preserve `this` binding
+export const fetchUserProfile = (login: string) => api42Service.fetchUserProfile(login);
+export const fetchUserProjects = (login: string) => api42Service.fetchUserProjects(login);
+export const fetchRawUserProjects = (login: string) => api42Service.fetchRawUserProjects(login);
+export const syncUserData = (login: string) => api42Service.syncUserData(login);
+export const isConfigured = () => api42Service.isConfigured();
+export const isAuthenticated = () => api42Service.isAuthenticated();

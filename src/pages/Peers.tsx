@@ -25,18 +25,26 @@ const Peers = () => {
   const loadCampusUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/favorites/campus/Heilbronn`);
-      
+      // Swap in new realtime endpoint
+      const response = await fetch(`/api/peers/active?campus=heilbronn`);
       if (!response.ok) {
         throw new Error('Failed to fetch campus users');
       }
-      
       const data = await response.json();
-      let users = data.data || [];
-      
-      // Remove current user from the list
-      users = users.filter((user: User) => user.id !== currentUser?.id);
-      
+      // Map to your CampusUser type shape if needed
+      let users = (data.peers || []).map((p: any) => ({
+        id: 0, // not provided by endpoint
+        login: p.login,
+        name: p.login,
+        level: 0,
+        campus: 'Heilbronn',
+        location: p.host,
+        favorites: [],
+        begin_at: p.begin_at,
+      }));
+      // Remove current user and enrich with favorites as before
+      users = users.filter((u: any) => u.login !== currentUser?.login);
+
       // Load favorites status for each user
       if (currentUser) {
         const usersWithFavorites = await Promise.all(
@@ -69,7 +77,7 @@ const Peers = () => {
 
   const toggleFavorite = async (user: CampusUser) => {
     if (!currentUser) return;
-    
+
     try {
       if (user.isFavorite) {
         // Remove favorite
@@ -77,7 +85,7 @@ const Peers = () => {
           `/api/favorites/${currentUser.id}/${user.id}`,
           { method: 'DELETE' }
         );
-        
+
         if (!response.ok) {
           throw new Error('Failed to remove favorite');
         }
@@ -87,16 +95,16 @@ const Peers = () => {
           `/api/favorites/${currentUser.id}/${user.id}`,
           { method: 'POST' }
         );
-        
+
         if (!response.ok) {
           throw new Error('Failed to add favorite');
         }
       }
-      
+
       // Update local state
-      setCampusUsers(prev => 
-        prev.map(u => 
-          u.id === user.id 
+      setCampusUsers(prev =>
+        prev.map(u =>
+          u.id === user.id
             ? { ...u, isFavorite: !u.isFavorite }
             : u
         )
@@ -249,14 +257,14 @@ const Peers = () => {
                         <span className={`text-sm font-medium ${theme.text.primary}`}>Level:</span>
                         <span className="font-bold text-blue-600 dark:text-blue-400">{user.level}</span>
                       </div>
-                      
+
                       {user.location && (
                         <div className="flex justify-between items-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
                           <span className={`text-sm font-medium ${theme.text.primary}`}>Location:</span>
                           <span className={`text-sm ${theme.text.secondary}`}>{user.location}</span>
                         </div>
                       )}
-                      
+
                       {user.favorites && user.favorites.length > 0 && (
                         <div className="pt-2">
                           <p className={`text-xs ${theme.text.secondary} mb-2`}>Skills:</p>
