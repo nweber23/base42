@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { useTheme } from '../contexts/ThemeContext';
 import type { User, Message, MessageThread } from '../types';
 import messagesData from '../data/messages.json';
 
@@ -253,6 +254,7 @@ const ChatView: React.FC<ChatViewProps> = ({ thread, users, currentUserId }) => 
 
 const Messages: React.FC = () => {
   const { currentUser, users } = useUser();
+  const { theme } = useTheme();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
 
   const threads = useMemo(() => {
@@ -284,26 +286,26 @@ const Messages: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-        <p className="text-gray-600 mt-2">
+      <div className="mb-6 animate-fade-in">
+        <h1 className={`text-3xl font-bold ${theme.text.primary} transition-colors duration-300`}>Messages</h1>
+        <p className={`${theme.text.secondary} mt-2 transition-colors duration-300`}>
           Stay connected with your peers at 42 Heilbronn
           {totalUnreadCount > 0 && (
-            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 transition-colors duration-300">
               {totalUnreadCount} unread
             </span>
           )}
         </p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden" style={{ height: '600px' }}>
+      <div className={`${theme.bg.card} rounded-lg shadow-xl border ${theme.border.primary} overflow-hidden transition-colors duration-300 animate-slide-up`} style={{ height: '600px' }}>
         <div className="flex h-full">
           {/* Thread List */}
-          <div className="w-1/3 border-r border-gray-200 flex flex-col">
-            <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-lg font-semibold text-gray-900">Conversations</h2>
+          <div className={`w-1/3 border-r ${theme.border.primary} flex flex-col transition-colors duration-300`}>
+            <div className={`p-4 border-b ${theme.border.primary} ${theme.bg.tertiary} transition-colors duration-300`}>
+              <h2 className={`text-lg font-semibold ${theme.text.primary} transition-colors duration-300`}>Conversations</h2>
               {totalUnreadCount > 0 && (
-                <p className="text-sm text-gray-600 mt-1">
+                <p className={`text-sm ${theme.text.secondary} mt-1 transition-colors duration-300`}>
                   {totalUnreadCount} unread message{totalUnreadCount !== 1 ? 's' : ''}
                 </p>
               )}

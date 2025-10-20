@@ -7,6 +7,8 @@ interface CardProps {
   hover?: boolean;
   padding?: 'none' | 'sm' | 'md' | 'lg';
   rounded?: 'sm' | 'md' | 'lg' | 'xl';
+  glass?: boolean;
+  shadow?: 'none' | 'sm' | 'md' | 'lg' | 'colored';
 }
 
 const Card: React.FC<CardProps> = ({ 
@@ -14,9 +16,11 @@ const Card: React.FC<CardProps> = ({
   className = '', 
   hover = true,
   padding = 'md',
-  rounded = 'lg'
+  rounded = 'lg',
+  glass = false,
+  shadow = 'md'
 }) => {
-  const { theme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   
   const paddingClasses = {
     none: '',
@@ -32,19 +36,29 @@ const Card: React.FC<CardProps> = ({
     xl: 'rounded-xl'
   };
 
-  const hoverEffect = hover ? 'hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200' : '';
+  const shadowClasses = {
+    none: '',
+    sm: 'shadow-soft',
+    md: 'shadow-medium',
+    lg: 'shadow-large',
+    colored: 'shadow-colored'
+  };
+
+  const hoverEffect = hover ? 'hover-lift interactive' : '';
+  const glassEffect = glass ? (isDarkMode ? 'glass-dark' : 'glass') : theme.bg.card;
+  const borderEffect = glass ? '' : `border ${theme.border.primary}`;
 
   return (
     <div 
       className={`
-        ${theme.bg.card} 
-        shadow-md 
-        border 
-        ${theme.border.primary} 
+        ${glassEffect}
+        ${shadowClasses[shadow]} 
+        ${borderEffect}
         ${roundedClasses[rounded]} 
         ${paddingClasses[padding]} 
         ${hoverEffect}
-        transition-colors duration-300 
+        animate-scale-in
+        transition-all duration-300 ease-in-out
         ${className}
       `}
     >
