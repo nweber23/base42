@@ -1,6 +1,38 @@
 import { Pool, PoolClient } from 'pg';
 import { User, Project, Event, Message, UserFavorite } from '../models';
 
+// 42 Common Core Project Definitions
+const COMMON_CORE_PROJECTS = [
+  { name: 'libft', description: 'Your first library - Recoding a few functions of the C standard library.', difficulty_level: 'Beginner', category: 'C Programming' },
+  { name: 'get_next_line', description: 'Reading a line from a fd is way too tedious.', difficulty_level: 'Beginner', category: 'C Programming' },
+  { name: 'ft_printf', description: 'This project is pretty straightforward, you have to recode printf.', difficulty_level: 'Beginner', category: 'C Programming' },
+  { name: 'born2beroot', description: 'This project aims to introduce you to the wonderful world of virtualization.', difficulty_level: 'Beginner', category: 'System Administration' },
+  { name: 'fract-ol', description: 'Create graphically beautiful fractals.', difficulty_level: 'Intermediate', category: 'Graphics' },
+  { name: 'pipex', description: 'This project will let you discover in detail a UNIX mechanism that you already know by using it in your program.', difficulty_level: 'Intermediate', category: 'Unix' },
+  { name: 'push_swap', description: 'This project will make you sort data on a stack, with a limited set of instructions, using the lowest possible number of actions.', difficulty_level: 'Intermediate', category: 'Algorithms' },
+  { name: 'minitalk', description: 'The purpose of this project is to code a small data exchange program using UNIX signals.', difficulty_level: 'Intermediate', category: 'Unix' },
+  { name: 'so_long', description: 'This project is a small 2D game with textures, sprites and some basic gameplay elements.', difficulty_level: 'Intermediate', category: 'Graphics' },
+  { name: 'philosophers', description: 'In this project, you will learn the basics of threading a process. You will see how to create threads and you will discover mutexes.', difficulty_level: 'Advanced', category: 'Unix' },
+  { name: 'minishell', description: 'As beautiful as a shell.', difficulty_level: 'Advanced', category: 'Unix' },
+  { name: 'cpp-module-00', description: 'This first module of C++ is designed to help you understand the specifities of the language when compared to C.', difficulty_level: 'Intermediate', category: 'C++' },
+  { name: 'cpp-module-01', description: 'This module is designed to help you understand Memory allocation, pointers to members, references, switch statement...', difficulty_level: 'Intermediate', category: 'C++' },
+  { name: 'cpp-module-02', description: 'This module is designed to help you understand Ad-hoc polymorphism, operator overloading and Orthodox Canonical class form.', difficulty_level: 'Intermediate', category: 'C++' },
+  { name: 'cpp-module-03', description: 'This module is designed to help you understand Inheritance.', difficulty_level: 'Intermediate', category: 'C++' },
+  { name: 'cpp-module-04', description: 'This module is designed to help you understand Subtype polymorphism, abstract classes and interfaces.', difficulty_level: 'Advanced', category: 'C++' },
+  { name: 'cpp-module-05', description: 'This module is designed to help you understand Try/Catch and Exceptions.', difficulty_level: 'Advanced', category: 'C++' },
+  { name: 'cpp-module-06', description: 'This module is designed to help you understand the different casts.', difficulty_level: 'Advanced', category: 'C++' },
+  { name: 'cpp-module-07', description: 'This module is designed to help you understand Templates.', difficulty_level: 'Advanced', category: 'C++' },
+  { name: 'cpp-module-08', description: 'This module is designed to help you understand templated containers, iterators and algorithms.', difficulty_level: 'Advanced', category: 'C++' },
+  { name: 'cpp-module-09', description: 'This module is designed to help you understand the containers.', difficulty_level: 'Expert', category: 'C++' },
+  { name: 'cub3d', description: 'This project is inspired by the world-famous Wolfenstein 3D game.', difficulty_level: 'Expert', category: 'Graphics' },
+  { name: 'minirt', description: 'This project is an introduction to the beautiful world of Raytracing.', difficulty_level: 'Expert', category: 'Graphics' },
+  { name: 'webserv', description: 'This project is here to make you write your own HTTP server.', difficulty_level: 'Expert', category: 'Web' },
+  { name: 'ft_containers', description: 'In this project, you will implement a few container types of the C++ standard template library.', difficulty_level: 'Expert', category: 'C++' },
+  { name: 'inception', description: 'This project aims to broaden your knowledge of system administration by using Docker.', difficulty_level: 'Expert', category: 'DevOps' },
+  { name: 'ft_transcendence', description: 'This is the last project of the common core. You will create a website for the mighty Pong contest!', difficulty_level: 'Expert', category: 'Web' },
+  { name: 'NetPractice', description: 'NetPractice is a general practical exercise to let you discover networking.', difficulty_level: 'Intermediate', category: 'Network' },
+];
+
 // Database connection pool
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -36,21 +68,53 @@ export const initializeDatabase = async (): Promise<void> => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS projects (
         id SERIAL PRIMARY KEY,
+        api_42_id INTEGER UNIQUE,
         name VARCHAR(255) NOT NULL,
-        deadline TIMESTAMP NOT NULL,
-        teammates TEXT[] DEFAULT '{}'
+        description TEXT,
+        slug VARCHAR(255),
+        exam BOOLEAN DEFAULT FALSE,
+        difficulty_level VARCHAR(50) DEFAULT 'Intermediate',
+        category VARCHAR(100) DEFAULT 'General',
+        deadline TIMESTAMP,
+        teammates TEXT[] DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Create user_projects table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_projects (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+        api_42_project_user_id INTEGER UNIQUE,
+        completion_percentage INTEGER DEFAULT 0 CHECK (completion_percentage >= 0 AND completion_percentage <= 100),
+        deadline TIMESTAMP,
+        status VARCHAR(50) DEFAULT 'in_progress' CHECK (status IN ('in_progress', 'active', 'completed', 'failed', 'on_hold')),
+        notes TEXT,
+        final_mark INTEGER,
+        validated BOOLEAN DEFAULT FALSE,
+        marked_at TIMESTAMP,
+        team_id INTEGER,
+        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Create user_favorites table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_favorites (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        favorite_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, favorite_user_id)
       )
     `);
 
-    // Create events table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS events (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        date TIMESTAMP NOT NULL,
-        type VARCHAR(20) NOT NULL CHECK (type IN ('Campus', 'Hackathon'))
-      )
-    `);
+    // Events table is created later with comprehensive schema
 
     // Create messages table
     await client.query(`
@@ -63,9 +127,43 @@ export const initializeDatabase = async (): Promise<void> => {
       )
     `);
 
+    // Seed projects if they don't exist
+    await seedProjects();
+    
     console.log('Database tables initialized successfully');
   } catch (error) {
     console.error('Error initializing database:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Seed projects function
+const seedProjects = async (): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    // Check if projects already exist
+    const result = await client.query('SELECT COUNT(*) FROM projects');
+    const projectCount = parseInt(result.rows[0].count);
+    
+    if (projectCount === 0) {
+      console.log('Seeding 42 common core projects...');
+      
+      for (const project of COMMON_CORE_PROJECTS) {
+        await client.query(
+          `INSERT INTO projects (name, description, difficulty_level, category) 
+           VALUES ($1, $2, $3, $4)`,
+          [project.name, project.description, project.difficulty_level, project.category]
+        );
+      }
+      
+      console.log(`Successfully seeded ${COMMON_CORE_PROJECTS.length} projects`);
+    } else {
+      console.log(`Projects already seeded (${projectCount} projects exist)`);
+    }
+  } catch (error) {
+    console.error('Error seeding projects:', error);
     throw error;
   } finally {
     client.release();
@@ -975,8 +1073,8 @@ export const syncUserProjectFrom42API = async (userId: number, projectUserData: 
   }
 };
 
-// Common core project names (42 curriculum main projects)
-const COMMON_CORE_PROJECTS = [
+// Common core project names for filtering (42 curriculum main projects)
+const COMMON_CORE_PROJECT_NAMES = [
   'libft', 'get_next_line', 'ft_printf', 'born2beroot', 'fract-ol', 'pipex',
   'push_swap', 'minitalk', 'so_long', 'philosophers', 'minishell', 
   'cpp-module-00', 'cpp-module-01', 'cpp-module-02', 'cpp-module-03', 
@@ -986,7 +1084,7 @@ const COMMON_CORE_PROJECTS = [
 ];
 
 const isCommonCoreProject = (projectName: string): boolean => {
-  return COMMON_CORE_PROJECTS.some(coreProject => 
+  return COMMON_CORE_PROJECT_NAMES.some(coreProject => 
     projectName.toLowerCase().includes(coreProject.toLowerCase()) ||
     coreProject.toLowerCase().includes(projectName.toLowerCase())
   );
