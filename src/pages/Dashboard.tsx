@@ -2,27 +2,44 @@ import { useUser } from '../contexts/UserContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 import Card from '../components/Card';
-import type { Project } from '../types';
+
+interface UserProject {
+  id: number;
+  name: string;
+  description: string;
+  difficulty_level: string;
+  category: string;
+  completion_percentage: number;
+  deadline: string | null;
+  started_at: string;
+  status: string;
+  notes: string | null;
+  final_mark?: number;
+  validated?: boolean;
+}
 
 const Dashboard = () => {
   const { currentUser } = useUser();
   const { theme } = useTheme();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<UserProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('');
 
-  // Load projects from the backend
+  // Load user's active project from the backend
   useEffect(() => {
     const loadProjects = async () => {
       if (!currentUser) return;
       
       try {
-        const response = await fetch('/api/projects');
+        const response = await fetch(`/api/projects/user/${currentUser.id}/active`);
         if (response.ok) {
           const data = await response.json();
-          setProjects(data.data || []);
+          setProjects(data.data ? [data.data] : []);
+        } else {
+          console.error('Failed to load active project:', response.statusText);
         }
       } catch (error) {
-        console.error('Error loading projects:', error);
+        console.error('Error loading active project:', error);
       } finally {
         setLoading(false);
       }
@@ -31,11 +48,53 @@ const Dashboard = () => {
     loadProjects();
   }, [currentUser]);
 
-  const getCurrentProject = () => {
-    return projects.find(p => new Date(p.deadline) > new Date()) || projects[0];
+  // Function to sync projects from 42 API
+  const syncProjects = async () => {
+    if (!currentUser) return;
+    
+    try {
+      setSyncStatus('Syncing projects from 42 API...');
+      const response = await fetch(`/api/sync/user/${currentUser.login}/projects/enhanced`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSyncStatus(`Successfully synced ${data.count} projects!`);
+        // Reload active project
+        const projectsResponse = await fetch(`/api/projects/user/${currentUser.id}/active`);
+        if (projectsResponse.ok) {
+          const projectsData = await projectsResponse.json();
+          setProjects(projectsData.data ? [projectsData.data] : []);
+        }
+      } else {
+        const errorData = await response.json();
+        setSyncStatus(`Sync failed: ${errorData.error}`);
+      }
+    } catch (error: any) {
+      setSyncStatus(`Sync error: ${error.message}`);
+    }
+    
+    // Clear sync status after 5 seconds
+    setTimeout(() => setSyncStatus(''), 5000);
   };
 
-  const calculateTimeLeft = (deadline: string) => {
+  const getCurrentProject = () => {
+    // Find the most recent in-progress project or the first one
+    const inProgressProjects = projects.filter(p => p.status === 'in_progress');
+    if (inProgressProjects.length > 0) {
+      // Sort by most recent start date or highest completion
+      return inProgressProjects.sort((a, b) => 
+        b.completion_percentage - a.completion_percentage || 
+        new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+      )[0];
+    }
+    return projects[0] || null;
+  };
+
+  const calculateTimeLeft = (deadline: string | null) => {
+    if (!deadline) return 'No deadline set';
+    
     const deadlineDate = new Date(deadline);
     const now = new Date();
     const difference = deadlineDate.getTime() - now.getTime();
@@ -53,6 +112,25 @@ const Dashboard = () => {
       }
     } else {
       return 'Deadline passed';
+    }
+  };
+
+  const getDifficultyColor = (level: string) => {
+    switch (level) {
+      case 'Beginner': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      case 'Intermediate': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+      case 'Advanced': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
+      case 'Expert': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-400 to-green-500';
+      case 'in_progress': return 'bg-blue-400 to-blue-500';
+      case 'failed': return 'bg-red-400 to-red-500';
+      default: return 'bg-gray-400 to-gray-500';
     }
   };
 
@@ -112,9 +190,29 @@ const Dashboard = () => {
           {/* Current Project Card */}
           <div className="lg:col-span-2 animate-slide-up" style={{animationDelay: '0.2s'}}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-8 transform hover:-translate-y-3 hover:shadow-3xl transition-all duration-500 hover:shadow-purple-500/20 backdrop-blur-sm">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-3">
-                💻 Current Project
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                  💻 Current Project
+                </h2>
+                <button
+                  onClick={syncProjects}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2"
+                  disabled={!!syncStatus}
+                >
+                  {syncStatus ? '🔄' : '🔄'} {syncStatus || 'Sync 42 Projects'}
+                </button>
+              </div>
+
+              {/* Sync Status */}
+              {syncStatus && (
+                <div className={`mb-4 p-3 rounded-lg text-sm font-medium ${
+                  syncStatus.includes('Successfully') ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                  syncStatus.includes('failed') || syncStatus.includes('error') ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                }`}>
+                  {syncStatus}
+                </div>
+              )}
 
               {loading ? (
                 <div className="flex items-center justify-center py-12">
@@ -124,37 +222,73 @@ const Dashboard = () => {
               ) : getCurrentProject() ? (
                 <div>
                   <div className="bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-100 dark:from-purple-900/30 dark:via-blue-900/30 dark:to-indigo-900/30 rounded-xl p-6 mb-6 border border-purple-200/50 dark:border-purple-700/50">
-                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">{getCurrentProject()!.name}</h3>
-                    <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-start justify-between mb-4">
                       <div>
-                        <p className="text-gray-700 dark:text-gray-300 font-medium">Deadline: <span className="text-blue-600 dark:text-blue-400 font-bold">{new Date(getCurrentProject()!.deadline).toLocaleDateString()}</span></p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Time remaining: <span className="font-bold text-red-500 dark:text-red-400 text-base">{calculateTimeLeft(getCurrentProject()!.deadline)}</span></p>
+                        <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{getCurrentProject()!.name}</h3>
+                        <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full ${getDifficultyColor(getCurrentProject()!.difficulty_level)}`}>
+                          {getCurrentProject()!.difficulty_level}
+                        </span>
                       </div>
                       <div className="text-right">
-                        <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-green-400 to-blue-500 text-white shadow-lg">
-                          ✨ In Progress
+                        <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-gradient-to-r from-${getStatusColor(getCurrentProject()!.status)} text-white shadow-lg`}>
+                          ✨ {getCurrentProject()!.status.replace('_', ' ').toUpperCase()}
                         </div>
                       </div>
                     </div>
-                    {getCurrentProject()!.teammates.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Teammates:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {getCurrentProject()!.teammates.map((teammate, index) => (
-                            <span key={index} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded-full font-medium">
-                              {teammate}
-                            </span>
-                          ))}
+                    
+                    <p className="text-gray-700 dark:text-gray-300 mb-4">{getCurrentProject()!.description}</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-gray-700 dark:text-gray-300 font-medium">Progress: <span className="text-blue-600 dark:text-blue-400 font-bold">{getCurrentProject()!.completion_percentage}%</span></p>
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mt-2">
+                          <div 
+                            className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500" 
+                            style={{ width: `${getCurrentProject()!.completion_percentage}%` }}
+                          ></div>
                         </div>
+                      </div>
+                      <div>
+                        {getCurrentProject()!.deadline ? (
+                          <>
+                            <p className="text-gray-700 dark:text-gray-300 font-medium">Deadline: <span className="text-blue-600 dark:text-blue-400 font-bold">{new Date(getCurrentProject()!.deadline!).toLocaleDateString()}</span></p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Time remaining: <span className="font-bold text-red-500 dark:text-red-400 text-base">{calculateTimeLeft(getCurrentProject()!.deadline!)}</span></p>
+                          </>
+                        ) : (
+                          <p className="text-gray-700 dark:text-gray-300 font-medium">No deadline set</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {getCurrentProject()!.final_mark !== undefined && getCurrentProject()!.final_mark !== null && (
+                      <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
+                        <p className="text-gray-700 dark:text-gray-300 font-medium">
+                          Final Mark: <span className="font-bold text-green-600 dark:text-green-400">{getCurrentProject()!.final_mark}%</span>
+                          {getCurrentProject()!.validated && <span className="ml-2 text-green-600 dark:text-green-400">✅ Validated</span>}
+                        </p>
+                      </div>
+                    )}
+
+                    {getCurrentProject()!.notes && (
+                      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">📝 {getCurrentProject()!.notes}</p>
                       </div>
                     )}
                   </div>
 
-                  {/* Projects count */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 dark:text-gray-300 font-medium">Total Projects</span>
-                      <span className="font-bold text-purple-600 dark:text-purple-400">{projects.length}</span>
+                  {/* Projects stats */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{projects.length}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Total Projects</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{projects.filter(p => p.status === 'in_progress').length}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">In Progress</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">{projects.filter(p => p.status === 'completed').length}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Completed</div>
                     </div>
                   </div>
                 </div>
@@ -165,7 +299,7 @@ const Dashboard = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                     <p>No projects found</p>
-                    <p className="text-sm mt-2">Projects will appear here when synced from 42 API</p>
+                    <p className="text-sm mt-2">Click "Sync 42 Projects" to load your projects from 42 API</p>
                   </div>
                 </div>
               )}
@@ -217,7 +351,7 @@ const Dashboard = () => {
                       <span className={`${theme.text.primary} transition-colors duration-300 font-medium`}>{project.name}</span>
                     </div>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(project.deadline).toLocaleDateString()}
+                      {project.deadline ? new Date(project.deadline).toLocaleDateString() : 'No deadline'}
                     </span>
                   </div>
                 ))}

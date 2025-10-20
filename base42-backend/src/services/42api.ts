@@ -319,6 +319,23 @@ class Api42Service {
   }
 
   /**
+   * Fetch raw user projects data from 42 API (for enhanced sync)
+   */
+  public async fetchRawUserProjects(login: string): Promise<Api42ProjectUser[]> {
+    await this.ensureAuthenticated();
+
+    try {
+      const response: AxiosResponse<Api42ProjectUser[]> = await this.axiosInstance.get(
+        `/v2/users/${login}/projects_users`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch raw projects for user ${login}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Fetch user projects from 42 API
    */
   public async fetchUserProjects(login: string): Promise<Project[]> {
@@ -404,6 +421,7 @@ export const api42Service = new Api42Service();
 export const {
   fetchUserProfile,
   fetchUserProjects,
+  fetchRawUserProjects,
   syncUserData,
   isConfigured,
   isAuthenticated

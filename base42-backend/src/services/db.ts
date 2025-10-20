@@ -653,6 +653,393 @@ export const getCurrentlyLoggedInUsersByCampus = async (campus: string): Promise
   }
 };
 
+// Project Operations
+export const getAllProjects = async (): Promise<any[]> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'SELECT * FROM projects ORDER BY name'
+    );
+    // Filter to only show common core projects
+    const filteredProjects = result.rows.filter(project => 
+      isCommonCoreProject(project.name)
+    );
+    return filteredProjects;
+  } catch (error) {
+    console.error('Error fetching all projects:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getUserProjects = async (userId: number): Promise<any[]> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT up.*, p.name, p.description, p.difficulty_level, p.category 
+       FROM user_projects up 
+       JOIN projects p ON up.project_id = p.id 
+       WHERE up.user_id = $1 AND up.status IN ('in_progress', 'active')
+       ORDER BY up.started_at DESC`,
+      [userId]
+    );
+    return result.rows.map((row: any) => ({
+      ...row,
+      deadline: row.deadline ? row.deadline.toISOString() : null,
+      started_at: row.started_at ? row.started_at.toISOString() : null
+    }));
+  } catch (error) {
+    console.error('Error fetching user projects:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Get user's single active project
+export const getUserActiveProject = async (userId: number): Promise<any | null> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT up.*, p.name, p.description, p.difficulty_level, p.category 
+       FROM user_projects up 
+       JOIN projects p ON up.project_id = p.id 
+       WHERE up.user_id = $1 AND up.status IN ('in_progress', 'active')
+       ORDER BY up.started_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return {
+      ...result.rows[0],
+      deadline: result.rows[0].deadline ? result.rows[0].deadline.toISOString() : null,
+      started_at: result.rows[0].started_at ? result.rows[0].started_at.toISOString() : null
+    };
+  } catch (error) {
+    console.error('Error fetching user active project:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getAllUserProjectsOverview = async (): Promise<any[]> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      `SELECT up.*, p.name, p.description, p.difficulty_level, p.category, 
+              u.name as user_name, u.login as user_login, u.campus 
+       FROM user_projects up 
+       JOIN projects p ON up.project_id = p.id 
+       JOIN users u ON up.user_id = u.id 
+       WHERE up.status = 'in_progress' 
+       ORDER BY up.started_at DESC`
+    );
+    return result.rows.map((row: any) => ({
+      ...row,
+      deadline: row.deadline ? row.deadline.toISOString() : null,
+      started_at: row.started_at ? row.started_at.toISOString() : null
+    }));
+  } catch (error) {
+    console.error('Error fetching project overview:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const addUserProject = async (userId: number, projectId: number, deadline?: string, notes?: string): Promise<any> => {
+  const client = await pool.connect();
+  try {
+    // Check if user already has an active project
+    const existingProject = await client.query(
+      'SELECT COUNT(*) FROM user_projects WHERE user_id = $1 AND status IN ($2, $3)',
+      [userId, 'in_progress', 'active']
+    );
+    
+    if (existingProject.rows[0].count > 0) {
+      throw new Error('You can only have one active project at a time. Please complete or remove your current project first.');
+    }
+
+    const result = await client.query(
+      `INSERT INTO user_projects (user_id, project_id, deadline, notes, status) 
+       VALUES ($1, $2, $3, $4, 'in_progress') 
+       RETURNING *`,
+      [userId, projectId, deadline || null, notes || null]
+    );
+    return {
+      ...result.rows[0],
+      deadline: result.rows[0].deadline ? result.rows[0].deadline.toISOString() : null,
+      started_at: result.rows[0].started_at ? result.rows[0].started_at.toISOString() : null
+    };
+  } catch (error) {
+    console.error('Error adding user project:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const updateUserProject = async (userId: number, userProjectId: number, updates: any): Promise<any> => {
+  const client = await pool.connect();
+  try {
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+    
+    if ('completion_percentage' in updates) {
+      fields.push(`completion_percentage = $${paramCount}`);
+      values.push(updates.completion_percentage);
+      paramCount++;
+    }
+    
+    if ('deadline' in updates) {
+      fields.push(`deadline = $${paramCount}`);
+      values.push(updates.deadline);
+      paramCount++;
+    }
+    
+    if ('status' in updates) {
+      fields.push(`status = $${paramCount}`);
+      values.push(updates.status);
+      paramCount++;
+    }
+    
+    if ('notes' in updates) {
+      fields.push(`notes = $${paramCount}`);
+      values.push(updates.notes);
+      paramCount++;
+    }
+    
+    if (fields.length === 0) {
+      throw new Error('No valid fields to update');
+    }
+    
+    values.push(userProjectId, userId);
+    
+    const result = await client.query(
+      `UPDATE user_projects SET ${fields.join(', ')} 
+       WHERE id = $${paramCount} AND user_id = $${paramCount + 1} 
+       RETURNING *`,
+      values
+    );
+    
+    if (result.rows.length === 0) {
+      throw new Error('Project not found or access denied');
+    }
+    
+    return {
+      ...result.rows[0],
+      deadline: result.rows[0].deadline ? result.rows[0].deadline.toISOString() : null,
+      started_at: result.rows[0].started_at ? result.rows[0].started_at.toISOString() : null
+    };
+  } catch (error) {
+    console.error('Error updating user project:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const deleteUserProject = async (userId: number, userProjectId: number): Promise<boolean> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'DELETE FROM user_projects WHERE id = $1 AND user_id = $2',
+      [userProjectId, userId]
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  } catch (error) {
+    console.error('Error deleting user project:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// 42 API Project Sync Operations
+export const syncProjectFrom42API = async (projectData: any): Promise<any> => {
+  const client = await pool.connect();
+  try {
+    // First, create or update the project in projects table
+    const projectResult = await client.query(
+      `INSERT INTO projects (api_42_id, name, description, slug, exam, difficulty_level, category)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (api_42_id) DO UPDATE SET
+         name = EXCLUDED.name,
+         description = EXCLUDED.description,
+         slug = EXCLUDED.slug,
+         exam = EXCLUDED.exam,
+         difficulty_level = EXCLUDED.difficulty_level,
+         category = EXCLUDED.category
+       RETURNING *`,
+      [
+        projectData.api_42_id,
+        projectData.name,
+        projectData.description,
+        projectData.slug,
+        projectData.exam,
+        projectData.difficulty_level || 'Intermediate', // Default difficulty
+        projectData.category || 'General' // Default category
+      ]
+    );
+    
+    return projectResult.rows[0];
+  } catch (error) {
+    console.error('Error syncing project from 42 API:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const syncUserProjectFrom42API = async (userId: number, projectUserData: any): Promise<any> => {
+  const client = await pool.connect();
+  try {
+    // First, ensure the project exists
+    const project = await syncProjectFrom42API({
+      api_42_id: projectUserData.project.id,
+      name: projectUserData.project.name,
+      description: projectUserData.project.description,
+      slug: projectUserData.project.slug,
+      exam: projectUserData.project.exam,
+    });
+
+    // Calculate completion percentage based on status
+    let completionPercentage = 0;
+    let status = 'in_progress';
+    
+    if (projectUserData.status === 'finished') {
+      completionPercentage = 100;
+      status = projectUserData.validated ? 'completed' : 'failed';
+    } else if (projectUserData.status === 'in_progress') {
+      completionPercentage = projectUserData.final_mark ? Math.max(0, Math.min(100, projectUserData.final_mark)) : 0;
+    }
+
+    // Get deadline from team data if available
+    let deadline = null;
+    if (projectUserData.teams && projectUserData.teams[0]?.terminating_at) {
+      deadline = projectUserData.teams[0].terminating_at;
+    }
+
+    // Create or update user project
+    const userProjectResult = await client.query(
+      `INSERT INTO user_projects (
+         user_id, project_id, api_42_project_user_id, completion_percentage, 
+         deadline, status, final_mark, validated, marked_at, team_id
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (api_42_project_user_id) DO UPDATE SET
+         completion_percentage = EXCLUDED.completion_percentage,
+         deadline = EXCLUDED.deadline,
+         status = EXCLUDED.status,
+         final_mark = EXCLUDED.final_mark,
+         validated = EXCLUDED.validated,
+         marked_at = EXCLUDED.marked_at,
+         team_id = EXCLUDED.team_id
+       RETURNING *`,
+      [
+        userId,
+        project.id,
+        projectUserData.id,
+        completionPercentage,
+        deadline,
+        status,
+        projectUserData.final_mark,
+        projectUserData.validated,
+        projectUserData.marked_at,
+        projectUserData.teams && projectUserData.teams[0] ? projectUserData.teams[0].id : null
+      ]
+    );
+    
+    return {
+      ...userProjectResult.rows[0],
+      name: project.name,
+      description: project.description,
+      difficulty_level: project.difficulty_level,
+      category: project.category,
+      deadline: userProjectResult.rows[0].deadline ? userProjectResult.rows[0].deadline.toISOString() : null,
+      started_at: userProjectResult.rows[0].started_at ? userProjectResult.rows[0].started_at.toISOString() : null,
+      marked_at: userProjectResult.rows[0].marked_at ? userProjectResult.rows[0].marked_at.toISOString() : null
+    };
+  } catch (error) {
+    console.error('Error syncing user project from 42 API:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// Common core project names (42 curriculum main projects)
+const COMMON_CORE_PROJECTS = [
+  'libft', 'get_next_line', 'ft_printf', 'born2beroot', 'fract-ol', 'pipex',
+  'push_swap', 'minitalk', 'so_long', 'philosophers', 'minishell', 
+  'cpp-module-00', 'cpp-module-01', 'cpp-module-02', 'cpp-module-03', 
+  'cpp-module-04', 'cpp-module-05', 'cpp-module-06', 'cpp-module-07', 
+  'cpp-module-08', 'cpp-module-09', 'cub3d', 'webserv', 'ft_containers',
+  'inception', 'ft_transcendence'
+];
+
+const isCommonCoreProject = (projectName: string): boolean => {
+  return COMMON_CORE_PROJECTS.some(coreProject => 
+    projectName.toLowerCase().includes(coreProject.toLowerCase()) ||
+    coreProject.toLowerCase().includes(projectName.toLowerCase())
+  );
+};
+
+export const syncUser42Projects = async (userId: number, projectsData: any[]): Promise<any[]> => {
+  const results = [];
+  
+  // Check if user already has an active project
+  const client = await pool.connect();
+  try {
+    const existingProject = await client.query(
+      'SELECT COUNT(*) FROM user_projects WHERE user_id = $1 AND status IN ($2, $3)',
+      [userId, 'in_progress', 'active']
+    );
+    
+    if (existingProject.rows[0].count > 0) {
+      console.log(`User ${userId} already has an active project, skipping sync`);
+      return [];
+    }
+  } catch (error) {
+    console.error('Error checking existing projects:', error);
+  } finally {
+    client.release();
+  }
+  
+  for (const projectUserData of projectsData) {
+    try {
+      // Only sync active projects (not finished or parent)
+      if (projectUserData.status === 'parent' || projectUserData.status === 'finished') {
+        continue;
+      }
+      
+      // Only sync common core projects
+      if (!isCommonCoreProject(projectUserData.project.name)) {
+        console.log(`Skipping non-common-core project: ${projectUserData.project.name}`);
+        continue;
+      }
+      
+      const result = await syncUserProjectFrom42API(userId, projectUserData);
+      results.push(result);
+      
+      // Only sync one project (first matching common core project)
+      break;
+    } catch (error) {
+      console.error(`Failed to sync project ${projectUserData.project.name} for user ${userId}:`, error);
+      // Continue with other projects
+    }
+  }
+  
+  return results;
+};
+
 // Close database connection pool
 export const closeDatabase = async (): Promise<void> => {
   await pool.end();

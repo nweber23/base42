@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { api42Service } from '../services/42api';
+import { api42Service, fetchRawUserProjects } from '../services/42api';
+import { syncUser42Projects, getUserByLogin } from '../services/db';
 
 const router = Router();
 
@@ -41,7 +42,7 @@ router.post('/user/:login', async (req: Request, res: Response) => {
   }
 });
 
-// Sync user projects from 42 API
+// Enhanced sync user projects from 42 API with database integration
 router.post('/user/:login/projects', async (req: Request, res: Response) => {
   try {
     const { login } = req.params;
@@ -54,8 +55,20 @@ router.post('/user/:login/projects', async (req: Request, res: Response) => {
       return res.status(503).json({ error: '42 API is not properly configured' });
     }
 
-    console.log(`Syncing projects for user ${login}`);
-    const projects = await api42Service.fetchUserProjects(login);
+    // Get user from database
+    const user = await getUserByLogin(login);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found in database. Please sync user profile first.' });
+    }
+
+    console.log(`Syncing projects for user ${login} (ID: ${user.id})`);
+    
+    // Fetch projects from 42 API
+    const response = await api42Service.fetchUserProjects(login);
+    
+    // For now, just return the fetched projects
+    // TODO: Later we can enhance this to use the new sync functions
+    const projects = response;
     
     res.json({
       message: `Projects synced successfully for ${login}`,
@@ -64,6 +77,62 @@ router.post('/user/:login/projects', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error syncing user projects:', error);
+    
+    if (error.response?.status === 404) {
+      return res.status(404).json({ error: 'User not found in 42 API' });
+    }
+    
+    if (error.response?.status === 401) {
+      return res.status(401).json({ error: '42 API authentication failed' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to sync user projects',
+      details: error.message 
+    });
+  }
+});
+
+// New endpoint: Sync user projects with enhanced database integration
+router.post('/user/:login/projects/enhanced', async (req: Request, res: Response) => {
+  try {
+    const { login } = req.params;
+    
+    if (!login) {
+      return res.status(400).json({ error: 'Login parameter is required' });
+    }
+
+    if (!api42Service.isConfigured()) {
+      return res.status(503).json({ error: '42 API is not properly configured' });
+    }
+
+    // Get user from database
+    const user = await getUserByLogin(login);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found in database. Please sync user profile first.' });
+    }
+
+    console.log(`Syncing projects (enhanced) for user ${login} (ID: ${user.id})`);
+    
+    // Fetch raw project data from 42 API
+    console.log('Fetching raw project data from 42 API...');
+    const projectsData = await api42Service.fetchRawUserProjects(login);
+    
+    // Sync to database with enhanced logic
+    const syncedProjects = await syncUser42Projects(user.id, projectsData);
+    
+    res.json({
+      message: `Enhanced project sync completed for ${login}`,
+      count: syncedProjects.length,
+      projects: syncedProjects,
+      meta: {
+        userId: user.id,
+        rawCount: projectsData.length,
+        syncedCount: syncedProjects.length
+      }
+    });
+  } catch (error: any) {
+    console.error('Error in enhanced project sync:', error);
     
     if (error.response?.status === 404) {
       return res.status(404).json({ error: 'User not found in 42 API' });
