@@ -503,7 +503,7 @@ class Api42Service {
           begin_at: new Date(loc.begin_at).toISOString(),
         }));
 
-      // Enrich with DB id and avatar
+      // Enrich with DB id and avatar, and update location in DB
       const peers = await Promise.all(
         basePeers.map(async (p) => {
           // Ensure user exists in DB and get id
@@ -516,6 +516,15 @@ class Api42Service {
             }
           }
           const id = dbUser?.id ?? 0;
+
+          // Update user location in DB if changed
+          if (dbUser && p.host && dbUser.location !== p.host) {
+            try {
+              await updateUserCached(dbUser.id, { location: p.host });
+            } catch (e) {
+              // ignore update errors
+            }
+          }
 
           // Avatar from cache or API
           let avatar = await getCache<string>(AVATAR_CACHE_KEY(p.login));

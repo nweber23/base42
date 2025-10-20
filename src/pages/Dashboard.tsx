@@ -19,17 +19,23 @@ interface UserProject {
 }
 
 const Dashboard = () => {
-  const { currentUser } = useUser();
+  const { currentUser, refreshUserData } = useUser();
   const { theme } = useTheme();
   const [projects, setProjects] = useState<UserProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('');
+  const [displayLocation, setDisplayLocation] = useState<string>('');
+  const [editingFavorites, setEditingFavorites] = useState(false);
+  const [favoriteInput, setFavoriteInput] = useState('');
+  const [favoritesDraft, setFavoritesDraft] = useState<string[]>([]);
+  const [savingFavorites, setSavingFavorites] = useState(false);
+  const [favoritesError, setFavoritesError] = useState('');
 
   // Load user's active project from the backend
   useEffect(() => {
     const loadProjects = async () => {
       if (!currentUser) return;
-      
+
       try {
         const response = await fetch(`/api/projects/user/${currentUser.id}/active`);
         if (response.ok) {
@@ -48,16 +54,84 @@ const Dashboard = () => {
     loadProjects();
   }, [currentUser]);
 
+  // Initialize and resolve location display
+  useEffect(() => {
+    const resolveLocation = async () => {
+      if (!currentUser) return;
+      const base = currentUser.location || '';
+      setDisplayLocation(base);
+      if (!base) {
+        try {
+          const resp = await fetch(`/api/peers/active?campus=heilbronn`);
+          if (resp.ok) {
+            const data = await resp.json();
+            const me = (data.peers || []).find((p: any) => p.login === currentUser.login);
+            if (me?.host) setDisplayLocation(me.host);
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+    };
+    resolveLocation();
+  }, [currentUser]);
+
+  // Initialize favorites editor from current user
+  useEffect(() => {
+    if (currentUser) {
+      setFavoritesDraft(currentUser.favorites || []);
+    }
+  }, [currentUser]);
+
+  const addFavoriteTech = () => {
+    const value = favoriteInput.trim();
+    if (!value) return;
+    // Deduplicate case-insensitive
+    const exists = favoritesDraft.some(f => f.toLowerCase() === value.toLowerCase());
+    if (!exists) {
+      setFavoritesDraft(prev => [...prev, value]);
+    }
+    setFavoriteInput('');
+  };
+
+  const removeFavoriteTech = (tech: string) => {
+    setFavoritesDraft(prev => prev.filter(t => t !== tech));
+  };
+
+  const saveFavorites = async () => {
+    if (!currentUser) return;
+    try {
+      setSavingFavorites(true);
+      setFavoritesError('');
+      const resp = await fetch(`/api/users/${currentUser.id}/favorites`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ favorites: favoritesDraft }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to save favorites');
+      }
+      setEditingFavorites(false);
+      // Refresh user context so dashboard and other pages stay in sync
+      await refreshUserData();
+    } catch (e: any) {
+      setFavoritesError(e.message || 'Failed to save favorites');
+    } finally {
+      setSavingFavorites(false);
+    }
+  };
+
   // Function to sync projects from 42 API
   const syncProjects = async () => {
     if (!currentUser) return;
-    
+
     try {
       setSyncStatus('Syncing projects from 42 API...');
       const response = await fetch(`/api/sync/user/${currentUser.login}/projects/enhanced`, {
         method: 'POST'
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setSyncStatus(`Successfully synced ${data.count} projects!`);
@@ -74,7 +148,7 @@ const Dashboard = () => {
     } catch (error: any) {
       setSyncStatus(`Sync error: ${error.message}`);
     }
-    
+
     // Clear sync status after 5 seconds
     setTimeout(() => setSyncStatus(''), 5000);
   };
@@ -84,8 +158,8 @@ const Dashboard = () => {
     const inProgressProjects = projects.filter(p => p.status === 'in_progress');
     if (inProgressProjects.length > 0) {
       // Sort by most recent start date or highest completion
-      return inProgressProjects.sort((a, b) => 
-        b.completion_percentage - a.completion_percentage || 
+      return inProgressProjects.sort((a, b) =>
+        b.completion_percentage - a.completion_percentage ||
         new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
       )[0];
     }
@@ -94,7 +168,7 @@ const Dashboard = () => {
 
   const calculateTimeLeft = (deadline: string | null) => {
     if (!deadline) return 'No deadline set';
-    
+
     const deadlineDate = new Date(deadline);
     const now = new Date();
     const difference = deadlineDate.getTime() - now.getTime();
@@ -176,7 +250,7 @@ const Dashboard = () => {
 
                 <div className="flex justify-between items-center p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
                   <span className="text-gray-700 dark:text-gray-300 font-medium">Location:</span>
-                  <span className="font-semibold text-gray-900 dark:text-white">{currentUser.location}</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">{displayLocation || 'Offline'}</span>
                 </div>
 
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -235,15 +309,15 @@ const Dashboard = () => {
                         </div>
                       </div>
                     </div>
-                    
+
                     <p className="text-gray-700 dark:text-gray-300 mb-4">{getCurrentProject()!.description}</p>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div>
                         <p className="text-gray-700 dark:text-gray-300 font-medium">Progress: <span className="text-blue-600 dark:text-blue-400 font-bold">{getCurrentProject()!.completion_percentage}%</span></p>
                         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mt-2">
-                          <div 
-                            className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500" 
+                          <div
+                            className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-500"
                             style={{ width: `${getCurrentProject()!.completion_percentage}%` }}
                           ></div>
                         </div>
@@ -315,16 +389,86 @@ const Dashboard = () => {
             <h2 className={`text-xl font-semibold ${theme.text.primary} mb-4 transition-colors duration-300 flex items-center gap-2`}>
               🚀 Favorite Technologies
             </h2>
-            <div className="flex flex-wrap gap-2">
-              {currentUser.favorites.map((tech, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300 cursor-pointer"
+            {!editingFavorites ? (
+              <>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {(currentUser.favorites || []).map((tech, index) => (
+                    <span
+                      key={`${tech}-${index}`}
+                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                  {(!currentUser.favorites || currentUser.favorites.length === 0) && (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">No favorites yet</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => { setEditingFavorites(true); setFavoritesDraft(currentUser.favorites || []); setFavoriteInput(''); }}
+                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm font-medium"
                 >
-                  {tech}
-                </span>
-              ))}
-            </div>
+                  Edit Favorites
+                </button>
+              </>
+            ) : (
+              <>
+                {favoritesError && (
+                  <div className="mb-3 text-sm text-red-600 dark:text-red-400">{favoritesError}</div>
+                )}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {favoritesDraft.map((tech) => (
+                    <span
+                      key={tech}
+                      className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-md"
+                    >
+                      {tech}
+                      <button
+                        onClick={() => removeFavoriteTech(tech)}
+                        className="ml-1 rounded-full bg-white/20 hover:bg-white/30 w-5 h-5 flex items-center justify-center"
+                        title="Remove"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {favoritesDraft.length === 0 && (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Add your favorite technologies</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="text"
+                    value={favoriteInput}
+                    onChange={(e) => setFavoriteInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addFavoriteTech(); } }}
+                    placeholder="e.g. C, C++, Docker, React"
+                    className={`flex-1 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 ${theme.bg.secondary} ${theme.text.primary}`}
+                  />
+                  <button
+                    onClick={addFavoriteTech}
+                    className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveFavorites}
+                    disabled={savingFavorites}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-md text-sm"
+                  >
+                    {savingFavorites ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => { setEditingFavorites(false); setFavoritesError(''); setFavoriteInput(''); setFavoritesDraft(currentUser?.favorites || []); }}
+                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-md text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </Card>
         </div>
 
