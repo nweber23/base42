@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: postgres123
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
@@ -31,7 +31,7 @@ services:
     restart: unless-stopped
     command: redis-server --requirepass redis123 --appendonly yes
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:

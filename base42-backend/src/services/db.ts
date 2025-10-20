@@ -179,7 +179,7 @@ export const deleteUser = async (id: number): Promise<boolean> => {
   const client = await pool.connect();
   try {
     const result = await client.query('DELETE FROM users WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   } catch (error) {
     console.error('Error deleting user:', error);
     throw error;
@@ -193,7 +193,7 @@ export const getProjects = async (): Promise<Project[]> => {
   const client = await pool.connect();
   try {
     const result = await client.query('SELECT * FROM projects ORDER BY id');
-    return result.rows.map(row => ({
+    return result.rows.map((row: any) => ({
       ...row,
       deadline: row.deadline.toISOString()
     }));
@@ -290,7 +290,7 @@ export const deleteProject = async (id: number): Promise<boolean> => {
   const client = await pool.connect();
   try {
     const result = await client.query('DELETE FROM projects WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   } catch (error) {
     console.error('Error deleting project:', error);
     throw error;
@@ -304,7 +304,7 @@ export const getEvents = async (): Promise<Event[]> => {
   const client = await pool.connect();
   try {
     const result = await client.query('SELECT * FROM events ORDER BY date');
-    return result.rows.map(row => ({
+    return result.rows.map((row: any) => ({
       ...row,
       date: row.date.toISOString()
     }));
@@ -401,7 +401,7 @@ export const deleteEvent = async (id: number): Promise<boolean> => {
   const client = await pool.connect();
   try {
     const result = await client.query('DELETE FROM events WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   } catch (error) {
     console.error('Error deleting event:', error);
     throw error;
@@ -415,7 +415,7 @@ export const getMessages = async (): Promise<Message[]> => {
   const client = await pool.connect();
   try {
     const result = await client.query('SELECT id, from_user as "from", to_user as "to", text, timestamp FROM messages ORDER BY timestamp DESC');
-    return result.rows.map(row => ({
+    return result.rows.map((row: any) => ({
       ...row,
       timestamp: row.timestamp.toISOString()
     }));
@@ -453,7 +453,7 @@ export const getMessagesByUser = async (username: string): Promise<Message[]> =>
       'SELECT id, from_user as "from", to_user as "to", text, timestamp FROM messages WHERE from_user = $1 OR to_user = $1 ORDER BY timestamp DESC',
       [username]
     );
-    return result.rows.map(row => ({
+    return result.rows.map((row: any) => ({
       ...row,
       timestamp: row.timestamp.toISOString()
     }));
@@ -531,7 +531,7 @@ export const deleteMessage = async (id: number): Promise<boolean> => {
   const client = await pool.connect();
   try {
     const result = await client.query('DELETE FROM messages WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    return result.rowCount !== null && result.rowCount > 0;
   } catch (error) {
     console.error('Error deleting message:', error);
     throw error;

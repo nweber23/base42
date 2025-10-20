@@ -20,9 +20,9 @@ services:
       POSTGRES_LOG_STATEMENT: all
     # Expose additional port for direct access
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   redis:
     # Enable Redis CLI access
     ports:
-      - "6379:6379"
+      - "6380:6379"
