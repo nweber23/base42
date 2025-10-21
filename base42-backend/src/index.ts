@@ -42,7 +42,7 @@ console.log('Socket.IO initialized');
 // Start server
 httpServer.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
-  
+
   // Initialize database
   try {
     await initializeDatabase();
@@ -51,7 +51,7 @@ httpServer.listen(PORT, async () => {
     console.error('Failed to initialize database:', error);
     process.exit(1);
   }
-  
+
   // Initialize Redis cache
   try {
     await initializeCache();

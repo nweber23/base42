@@ -29,7 +29,7 @@ export const initializeSocketIO = (httpServer: HTTPServer): SocketIOServer => {
     // Handle user authentication/registration
     socket.on('auth', async (data: { userId: number; userName: string }) => {
       const { userId, userName } = data;
-      
+
       if (!userId) {
         console.error('Socket auth failed: missing userId');
         return;
@@ -135,7 +135,7 @@ export const emitNewMessage = (message: any) => {
   if (!io) return;
 
   const conversationRoom = getConversationRoom(message.sender_id, message.receiver_id);
-  
+
   // Emit to conversation room
   io.to(conversationRoom).emit('new_message', message);
 

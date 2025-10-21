@@ -30,7 +30,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     if (!currentUser) return;
 
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-    
+
     // Initialize socket connection
     const newSocket = io(API_BASE_URL, {
       transports: ['websocket', 'polling'],
@@ -43,7 +43,7 @@ export const SocketProvider = ({ children }: SocketProviderProps) => {
     newSocket.on('connect', () => {
       console.log('Socket connected:', newSocket.id);
       setIsConnected(true);
-      
+
       // Authenticate with user info
       newSocket.emit('auth', {
         userId: currentUser.id,

@@ -550,8 +550,8 @@ export const getConversation = async (userId1: number, userId2: number): Promise
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT * FROM messages 
-       WHERE (sender_id = $1 AND receiver_id = $2) 
+      `SELECT * FROM messages
+       WHERE (sender_id = $1 AND receiver_id = $2)
           OR (sender_id = $2 AND receiver_id = $1)
        ORDER BY created_at ASC`,
       [userId1, userId2]
@@ -583,15 +583,15 @@ export const getUserConversations = async (userId: number): Promise<any[]> => {
          m.sender_id,
          m.receiver_id,
          m.read,
-         (SELECT COUNT(*) FROM messages 
-          WHERE receiver_id = $1 
-            AND sender_id = other_user_id 
+         (SELECT COUNT(*) FROM messages
+          WHERE receiver_id = $1
+            AND sender_id = other_user_id
             AND read = FALSE) as unread_count
        FROM (
-         SELECT 
-           CASE 
-             WHEN sender_id = $1 THEN receiver_id 
-             ELSE sender_id 
+         SELECT
+           CASE
+             WHEN sender_id = $1 THEN receiver_id
+             ELSE sender_id
            END as other_user_id,
            id, content, created_at, sender_id, receiver_id, read
          FROM messages
