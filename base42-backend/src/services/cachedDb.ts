@@ -56,6 +56,22 @@ export const getUserByIdCached = async (id: number): Promise<User | null> => {
   return user;
 };
 
+export const searchUsersByLoginCached = async (query: string, limit: number = 20): Promise<User[]> => {
+  const cacheKey = `users:search:${query.toLowerCase()}:${limit}`;
+
+  // Try to get from cache first (5 minute TTL for search results)
+  let users = await getCache<User[]>(cacheKey);
+
+  if (!users) {
+    // If not in cache, get from database
+    users = await db.searchUsersByLogin(query, limit);
+    // Store in cache for 5 minutes
+    await setCache(cacheKey, users, 300);
+  }
+
+  return users;
+};
+
 export const getUserByLoginCached = async (login: string): Promise<User | null> => {
   const cacheKey = getCacheKey.userByLogin(login);
 

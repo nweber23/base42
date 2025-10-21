@@ -102,3 +102,29 @@ export interface CommunityEvent {
   created_at: string;
   source: 'community';
 }
+
+export interface StudentSearchResult {
+  login: string;
+  displayname: string;
+  level: string | number;
+  location: string | null;
+  current_project: string | null;
+  image: string;
+  campus: string;
+}
+
+export interface StudentProfile extends StudentSearchResult {
+  email?: string;
+  full_name: string;
+  github?: string;
+  linkedin?: string;
+  wallet: number;
+  correction_point: number;
+  skills: Array<{ name: string; level: number }>;
+  projects: Array<{
+    name: string;
+    status: string;
+    final_mark: number | null;
+    validated: boolean | null;
+  }>;
+}

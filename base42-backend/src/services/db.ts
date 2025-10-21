@@ -210,6 +210,23 @@ export const getUserByLogin = async (login: string): Promise<User | null> => {
   }
 };
 
+export const searchUsersByLogin = async (query: string, limit: number = 20): Promise<User[]> => {
+  const client = await pool.connect();
+  try {
+    const searchPattern = `%${query.toLowerCase()}%`;
+    const result = await client.query(
+      'SELECT * FROM users WHERE LOWER(login) LIKE $1 OR LOWER(name) LIKE $1 ORDER BY login LIMIT $2',
+      [searchPattern, limit]
+    );
+    return result.rows;
+  } catch (error) {
+    console.error('Error searching users:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 export const createUser = async (user: Omit<User, 'id'>): Promise<User> => {
   const client = await pool.connect();
   try {

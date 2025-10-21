@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useSocket } from '../contexts/SocketContext';
 import type { Message, Conversation } from '../types';
@@ -6,6 +7,7 @@ import type { Message, Conversation } from '../types';
 const Messages = () => {
   const { currentUser } = useUser();
   const { socket, isConnected, onlineUsers } = useSocket();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -17,6 +19,16 @@ const Messages = () => {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
+  // Load conversation from URL parameter if present
+  useEffect(() => {
+    const userId = searchParams.get('user');
+    if (userId && !isNaN(parseInt(userId))) {
+      setSelectedUserId(parseInt(userId));
+      // Clear the URL parameter after loading
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch conversations
   const fetchConversations = async () => {
