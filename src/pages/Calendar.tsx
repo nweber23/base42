@@ -27,7 +27,7 @@ const Calendar = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/calendar/official`);
+      const response = await fetch(`${API_BASE_URL}/api/calendar/official?campus=heilbronn`);
       if (!response.ok) throw new Error('Failed to fetch official events');
       const data = await response.json();
       setOfficialEvents(data.data || []);
@@ -305,11 +305,11 @@ const Calendar = () => {
               officialEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow overflow-hidden"
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span className="inline-block px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 rounded-full">
                           {event.kind}
                         </span>
@@ -319,11 +319,11 @@ const Calendar = () => {
                           </span>
                         )}
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 break-words">
                         {event.title}
                       </h3>
                       {event.description && (
-                        <p className="text-gray-700 dark:text-gray-300 mb-3">
+                        <p className="text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap break-words overflow-hidden">
                           {event.description}
                         </p>
                       )}
@@ -379,18 +379,18 @@ const Calendar = () => {
               communityEvents.map((event) => (
                 <div
                   key={event.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow overflow-hidden"
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <span className="inline-block px-3 py-1 text-xs font-semibold text-purple-700 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-300 rounded-full mb-2">
                         Community Event
                       </span>
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 break-words">
                         {event.title}
                       </h3>
                       {event.description && (
-                        <p className="text-gray-700 dark:text-gray-300 mb-3">
+                        <p className="text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap break-words overflow-hidden">
                           {event.description}
                         </p>
                       )}
@@ -438,7 +438,7 @@ const Calendar = () => {
                         {event.link && (
                           <div className="flex items-center gap-2">
                             <svg
-                              className="w-5 h-5"
+                              className="w-5 h-5 flex-shrink-0"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -454,7 +454,7 @@ const Calendar = () => {
                               href={event.link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 dark:text-blue-400 hover:underline"
+                              className="text-blue-600 dark:text-blue-400 hover:underline truncate"
                             >
                               Event Link
                             </a>

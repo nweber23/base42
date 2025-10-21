@@ -51,18 +51,26 @@ interface ApiResponse<T> {
 
 export class CalendarController {
   /**
-   * Get official 42 Heilbronn events from the 42 API
-   * GET /api/calendar/official
+   * Get official 42 events from the 42 API, filtered by campus
+   * GET /api/calendar/official?campus=heilbronn
    */
   public async getOfficialEvents(req: Request, res: Response<ApiResponse<any[]>>): Promise<void> {
     try {
-      // Campus ID 51 = 42 Heilbronn
-      const campusId = parseInt(req.query.campus_id as string) || 51;
+      const campusParam = (req.query.campus as string | undefined)?.toLowerCase() || 'heilbronn';
+
+      // Dynamically resolve campus ID (same as peers)
+      const { api42Service } = await import('../services/42api');
+      const campusId = await api42Service.resolveCampusId(campusParam);
 
       const events = await fetchOfficialEvents(campusId);
 
+      // Filter events to only include those that contain this specific campus
+      const filteredEvents = events.filter(event =>
+        event.campus_ids && event.campus_ids.includes(campusId)
+      );
+
       // Transform 42 API events to a simpler format
-      const transformedEvents = events.map(event => ({
+      const transformedEvents = filteredEvents.map(event => ({
         id: event.id,
         title: event.name,
         description: event.description,
@@ -77,7 +85,7 @@ export class CalendarController {
 
       res.json({
         data: transformedEvents,
-        message: `Retrieved ${transformedEvents.length} official events`
+        message: `Retrieved ${transformedEvents.length} official events for ${campusParam}`
       });
     } catch (error) {
       console.error('Error fetching official events:', error);
@@ -85,9 +93,7 @@ export class CalendarController {
         error: 'Failed to fetch official events from 42 API'
       });
     }
-  }
-
-  /**
+  }  /**
    * Get all community events
    * GET /api/calendar/community
    */

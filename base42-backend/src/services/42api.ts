@@ -632,7 +632,6 @@ class Api42Service {
     await this.ensureAuthenticated();
 
     try {
-      const now = new Date().toISOString();
       const events: Api42Event[] = [];
       let page = 1;
       const perPage = 100;
@@ -643,7 +642,6 @@ class Api42Service {
           {
             params: {
               'filter[future]': true, // Only future/ongoing events
-              'range[begin_at]': `${now},`, // Events starting from now
               'sort': 'begin_at', // Sort by begin date
               per_page: perPage,
               page,
