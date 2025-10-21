@@ -76,20 +76,31 @@ const Dashboard = () => {
     resolveLocation();
   }, [currentUser]);
 
-  // Initialize favorites editor from current user
+  // Initialize favorites editor when entering edit mode
   useEffect(() => {
-    if (currentUser) {
+    if (editingFavorites && currentUser) {
       setFavoritesDraft(currentUser.favorites || []);
     }
-  }, [currentUser]);
+  }, [editingFavorites]);
 
   const addFavoriteTech = () => {
     const value = favoriteInput.trim();
-    if (!value) return;
+    console.log('addFavoriteTech called, input value:', value);
+    console.log('Current favoritesDraft:', favoritesDraft);
+    if (!value) {
+      console.log('Value is empty, returning');
+      return;
+    }
     // Deduplicate case-insensitive
     const exists = favoritesDraft.some(f => f.toLowerCase() === value.toLowerCase());
+    console.log('Does value already exist?', exists);
     if (!exists) {
-      setFavoritesDraft(prev => [...prev, value]);
+      console.log('Adding new favorite');
+      setFavoritesDraft(prev => {
+        const newDraft = [...prev, value];
+        console.log('New draft:', newDraft);
+        return newDraft;
+      });
     }
     setFavoriteInput('');
   };
@@ -103,6 +114,7 @@ const Dashboard = () => {
     try {
       setSavingFavorites(true);
       setFavoritesError('');
+      console.log('Saving favorites:', favoritesDraft);
       const resp = await fetch(`/api/users/${currentUser.id}/favorites`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -110,12 +122,18 @@ const Dashboard = () => {
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
+        console.error('Failed to save favorites:', err);
         throw new Error(err.error || 'Failed to save favorites');
       }
-      setEditingFavorites(false);
+      const result = await resp.json();
+      console.log('Save response:', result);
       // Refresh user context so dashboard and other pages stay in sync
       await refreshUserData();
+      console.log('User data refreshed, new favorites:', currentUser.favorites);
+      // Set editing to false AFTER refresh so the draft gets updated with new server data
+      setEditingFavorites(false);
     } catch (e: any) {
+      console.error('Error saving favorites:', e);
       setFavoritesError(e.message || 'Failed to save favorites');
     } finally {
       setSavingFavorites(false);
@@ -405,7 +423,7 @@ const Dashboard = () => {
                   )}
                 </div>
                 <button
-                  onClick={() => { setEditingFavorites(true); setFavoritesDraft(currentUser.favorites || []); setFavoriteInput(''); }}
+                  onClick={() => { setEditingFavorites(true); setFavoriteInput(''); }}
                   className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm font-medium"
                 >
                   Edit Favorites

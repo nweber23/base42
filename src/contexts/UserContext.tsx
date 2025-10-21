@@ -56,7 +56,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const syncResponse = await fetch(`/api/sync/user/${userLogin}/complete`, {
         method: 'POST',
       });
-      
+
       if (!syncResponse.ok) {
         if (syncResponse.status === 404) {
           throw new Error('User not found in 42 intranet');
@@ -65,7 +65,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         }
         throw new Error('Failed to sync user data');
       }
-      
+
       const syncData = await syncResponse.json();
       setCurrentUser(syncData.user);
     } catch (error) {
@@ -91,15 +91,16 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const refreshUserData = async () => {
     if (!currentUser) return;
-    
+
     try {
-      const response = await fetch(`/api/sync/user/${currentUser.login}/complete`, {
-        method: 'POST',
-      });
-      
+      // Fetch user directly from our database by ID (don't sync from 42 API)
+      const response = await fetch(`/api/users/${currentUser.id}`);
+
       if (response.ok) {
         const data = await response.json();
-        setCurrentUser(data.user);
+        setCurrentUser(data.data);
+      } else {
+        console.error('Failed to refresh user data:', response.statusText);
       }
     } catch (error) {
       console.error('Error refreshing user data:', error);
