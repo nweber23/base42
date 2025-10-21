@@ -5,7 +5,7 @@ A full-stack React/Node.js application for 42 students to connect, collaborate, 
 ## Features
 
 - **Dashboard**: Overview of your current project and deadlines
-- **Peers**: Connect with fellow students at your campus  
+- **Peers**: Connect with fellow students at your campus
 - **Projects**: Find teammates and collaborate on assignments
 - **Messages**: Chat with other students and groups
 - **Calendar**: Track events and deadlines
@@ -108,7 +108,7 @@ NODE_ENV=development
 
 # 42 API
 API_UID=your_42_api_uid
-API_SECRET=your_42_api_secret  
+API_SECRET=your_42_api_secret
 REDIRECT_URI=http://localhost:3000/auth/callback
 
 # Database
@@ -253,3 +253,6 @@ src/
 ## Note
 
 This project was created with Node.js 18.19.1, which may show compatibility warnings with the latest versions of Vite and React Router. For the best experience, upgrade to Node.js 20+ or use the project as-is with the understanding that some features may require Node.js 20+.
+
+## Author
+**nweber** - 42 Heilbronn Students
