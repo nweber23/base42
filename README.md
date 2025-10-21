@@ -256,3 +256,4 @@ This project was created with Node.js 18.19.1, which may show compatibility warn
 
 ## Author
 **nweber** - 42 Heilbronn Students
+**fbraune** - 42 Heilbronn Students
