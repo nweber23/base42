@@ -152,7 +152,7 @@ const Peers = () => {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search students by name or login..."
+                placeholder="Search students by login..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={`w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 ${theme.bg.secondary} ${theme.text.primary} focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200`}
