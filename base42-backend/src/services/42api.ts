@@ -185,6 +185,7 @@ interface Api42ProjectUser {
 const TOKEN_CACHE_KEY = '42api:oauth_token';
 const PEERS_CACHE_KEY = (campusId: number) => `peers:active:${campusId}`;
 const AVATAR_CACHE_KEY = (login: string) => `42api:avatar:${login}`;
+const EVENTS_CACHE_KEY = (campusId: number) => `42api:events:${campusId}`;
 
 // Minimal 42 location shape we need
 interface Api42Location {
@@ -196,6 +197,23 @@ interface Api42Location {
     id: number;
     login: string;
   };
+}
+
+// 42 API Event interface
+interface Api42Event {
+  id: number;
+  name: string;
+  description: string;
+  location: string;
+  kind: string;
+  max_people: number | null;
+  nbr_subscribers: number;
+  begin_at: string;
+  end_at: string;
+  campus_ids: number[];
+  cursus_ids: number[];
+  created_at: string;
+  updated_at: string;
 }
 
 // Minimal Campus shape for lookup
@@ -596,6 +614,64 @@ class Api42Service {
     await setCache(cacheKey, found.id, 24 * 60 * 60);
     return found.id;
   }
+
+  /**
+   * Fetch official 42 events for a campus (upcoming or ongoing)
+   * Results are cached for 10 minutes
+   */
+  public async fetchOfficialEvents(campusId: number = 51): Promise<Api42Event[]> {
+    const cacheKey = EVENTS_CACHE_KEY(campusId);
+
+    // Check cache first
+    const cached = await getCache<Api42Event[]>(cacheKey);
+    if (cached) {
+      console.log(`Returning cached events for campus ${campusId}`);
+      return cached;
+    }
+
+    await this.ensureAuthenticated();
+
+    try {
+      const now = new Date().toISOString();
+      const events: Api42Event[] = [];
+      let page = 1;
+      const perPage = 100;
+
+      while (true) {
+        const resp: AxiosResponse<Api42Event[]> = await this.axiosInstance.get(
+          `/v2/campus/${campusId}/events`,
+          {
+            params: {
+              'filter[future]': true, // Only future/ongoing events
+              'range[begin_at]': `${now},`, // Events starting from now
+              'sort': 'begin_at', // Sort by begin date
+              per_page: perPage,
+              page,
+            },
+          }
+        );
+
+        const batch = resp.data || [];
+        events.push(...batch);
+
+        if (batch.length < perPage) break; // Last page
+        page += 1;
+
+        // Safety limit to prevent infinite loops
+        if (page > 10) break;
+      }
+
+      console.log(`Fetched ${events.length} official events for campus ${campusId}`);
+
+      // Cache for 10 minutes (600 seconds)
+      await setCache(cacheKey, events, 600);
+
+      return events;
+    } catch (error) {
+      console.error(`Failed to fetch events for campus ${campusId}:`, error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
@@ -608,3 +684,4 @@ export const fetchRawUserProjects = (login: string) => api42Service.fetchRawUser
 export const syncUserData = (login: string) => api42Service.syncUserData(login);
 export const isConfigured = () => api42Service.isConfigured();
 export const isAuthenticated = () => api42Service.isAuthenticated();
+export const fetchOfficialEvents = (campusId?: number) => api42Service.fetchOfficialEvents(campusId);

@@ -6,6 +6,7 @@ import messageRoutes from './messages';
 import syncRoutes from './sync';
 import favoritesRoutes from './favorites';
 import peersRouter from './peers';
+import calendarRoutes from './calendar';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use('/messages', messageRoutes);
 router.use('/sync', syncRoutes);
 router.use('/favorites', favoritesRoutes);
 router.use('/peers', peersRouter);
+router.use('/calendar', calendarRoutes);
 
 export default router;

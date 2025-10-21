@@ -62,3 +62,28 @@ export interface CalendarEvent {
   time: string;
   description?: string;
 }
+
+export interface OfficialEvent {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+  end_date: string;
+  location: string;
+  kind: string;
+  max_people: number | null;
+  subscribers: number;
+  source: 'official';
+}
+
+export interface CommunityEvent {
+  id: number;
+  user_id: number;
+  title: string;
+  description?: string;
+  date: string;
+  location?: string;
+  link?: string;
+  created_at: string;
+  source: 'community';
+}
