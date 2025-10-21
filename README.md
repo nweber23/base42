@@ -255,4 +255,4 @@ src/
 This project was created with Node.js 18.19.1, which may show compatibility warnings with the latest versions of Vite and React Router. For the best experience, upgrade to Node.js 20+ or use the project as-is with the understanding that some features may require Node.js 20+.
 
 ## Author
-**nweber & fbraune & apeposhi** - 42 Heilbronn Students
+**nweber & fbraune & apeposhi & bavirgil** - 42 Heilbronn Students
