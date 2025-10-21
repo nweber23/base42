@@ -1,5 +1,9 @@
 # Multi-stage build for React frontend
-FROM node:20-alpine AS build
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
+
+# Accept build arguments for cross-platform builds
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
 
 # Set working directory
 WORKDIR /app

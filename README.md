@@ -23,11 +23,20 @@ A full-stack React/Node.js application for 42 students to connect, collaborate, 
 ## Quick Start
 
 ### Prerequisites
-- Docker and Docker Compose
-- 42 API credentials (see setup below)
+- **Node.js 18+** (recommended: 20+)
+- **Docker and Docker Compose**
+- **42 API credentials** (get them from [42 OAuth](https://profile.intra.42.fr/oauth/applications))
 
-### 1. Initial Setup
+### 1. Automatic Setup (Recommended)
 ```bash
+# Clone the repository
+git clone <your-repo-url>
+cd base42
+
+# Run the setup script (detects your OS and installs dependencies)
+./setup.sh
+
+# Or manually:
 make setup
 ```
 
@@ -117,15 +126,54 @@ REDIS_PASSWORD=redis123
 
 ## Troubleshooting
 
-### Build Issues
+### Cross-Platform Issues
+
+#### Windows
+- Use Git Bash or PowerShell for running scripts
+- If Docker volumes don't work, check Docker Desktop settings → Resources → File Sharing
+- Line ending issues: run `git config core.autocrlf false` before cloning
+
+#### macOS (Apple Silicon)
+- Some Docker images may need `--platform linux/amd64` flag
+- Use Homebrew to install dependencies: `brew install node@20`
+
+#### Linux
+- Ensure your user is in the docker group: `sudo usermod -aG docker $USER`
+- If permission issues with volumes, check SELinux settings
+
+### Common Issues
+
+#### Port Conflicts
+If ports are already in use, edit `.env` file:
+```bash
+FRONTEND_PORT=3001  # Change from 3000
+BACKEND_PORT=5001   # Change from 5000
+POSTGRES_PORT=5434  # Change from 5433
+REDIS_PORT=6381     # Change from 6380
+```
+
+#### Build Issues
 - Ensure Docker daemon is running
-- Check available disk space
+- Check available disk space (need ~2GB)
 - Run `make clean` to remove old containers
+- Clear Docker cache: `docker system prune -a`
+
+#### Node.js Version Issues
+- Use Node.js 18+ (recommended: 20+)
+- Check with: `node --version`
+- Use nvm to manage versions: `nvm use` (reads .nvmrc)
 
 ### 42 API Issues
 - Verify API credentials in `.env` files
 - Check redirect URI matches exactly
 - Run `make api-info` for configuration help
+
+### Health Check
+Run comprehensive diagnostics:
+```bash
+make health  # Full system check
+./setup.sh   # Re-run setup if needed
+```
 
 A modern React + TypeScript + TailwindCSS application built with Vite.
 

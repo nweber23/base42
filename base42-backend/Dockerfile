@@ -1,5 +1,9 @@
 # Use Node.js 20 as base image
-FROM node:20-alpine
+FROM --platform=$TARGETPLATFORM node:20-alpine
+
+# Accept build arguments for cross-platform builds
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
 
 # Set working directory
 WORKDIR /app
