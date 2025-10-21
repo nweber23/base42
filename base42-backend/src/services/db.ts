@@ -513,10 +513,10 @@ export const deleteEvent = async (id: number): Promise<boolean> => {
 export const getMessages = async (): Promise<Message[]> => {
   const client = await pool.connect();
   try {
-    const result = await client.query('SELECT id, from_user as "from", to_user as "to", text, timestamp FROM messages ORDER BY timestamp DESC');
+    const result = await client.query('SELECT * FROM messages ORDER BY created_at DESC');
     return result.rows.map((row: any) => ({
       ...row,
-      timestamp: row.timestamp.toISOString()
+      created_at: row.created_at.toISOString()
     }));
   } catch (error) {
     console.error('Error fetching messages:', error);
@@ -529,13 +529,13 @@ export const getMessages = async (): Promise<Message[]> => {
 export const getMessageById = async (id: number): Promise<Message | null> => {
   const client = await pool.connect();
   try {
-    const result = await client.query('SELECT id, from_user as "from", to_user as "to", text, timestamp FROM messages WHERE id = $1', [id]);
+    const result = await client.query('SELECT * FROM messages WHERE id = $1', [id]);
     if (result.rows.length === 0) return null;
 
     const row = result.rows[0];
     return {
       ...row,
-      timestamp: row.timestamp.toISOString()
+      created_at: row.created_at.toISOString()
     };
   } catch (error) {
     console.error('Error fetching message by id:', error);
@@ -545,36 +545,95 @@ export const getMessageById = async (id: number): Promise<Message | null> => {
   }
 };
 
-export const getMessagesByUser = async (username: string): Promise<Message[]> => {
+// Get conversation between two users
+export const getConversation = async (userId1: number, userId2: number): Promise<Message[]> => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      'SELECT id, from_user as "from", to_user as "to", text, timestamp FROM messages WHERE from_user = $1 OR to_user = $1 ORDER BY timestamp DESC',
-      [username]
+      `SELECT * FROM messages 
+       WHERE (sender_id = $1 AND receiver_id = $2) 
+          OR (sender_id = $2 AND receiver_id = $1)
+       ORDER BY created_at ASC`,
+      [userId1, userId2]
     );
     return result.rows.map((row: any) => ({
       ...row,
-      timestamp: row.timestamp.toISOString()
+      created_at: row.created_at.toISOString()
     }));
   } catch (error) {
-    console.error('Error fetching messages by user:', error);
+    console.error('Error fetching conversation:', error);
     throw error;
   } finally {
     client.release();
   }
 };
 
-export const createMessage = async (message: Omit<Message, 'id' | 'timestamp'>): Promise<Message> => {
+// Get all conversations for a user (with last message)
+export const getUserConversations = async (userId: number): Promise<any[]> => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      'INSERT INTO messages (from_user, to_user, text) VALUES ($1, $2, $3) RETURNING id, from_user as "from", to_user as "to", text, timestamp',
-      [message.from, message.to, message.text]
+      `SELECT DISTINCT ON (other_user_id)
+         other_user_id,
+         u.login as other_user_login,
+         u.name as other_user_name,
+         m.id as last_message_id,
+         m.content as last_message_content,
+         m.created_at as last_message_time,
+         m.sender_id,
+         m.receiver_id,
+         m.read,
+         (SELECT COUNT(*) FROM messages 
+          WHERE receiver_id = $1 
+            AND sender_id = other_user_id 
+            AND read = FALSE) as unread_count
+       FROM (
+         SELECT 
+           CASE 
+             WHEN sender_id = $1 THEN receiver_id 
+             ELSE sender_id 
+           END as other_user_id,
+           id, content, created_at, sender_id, receiver_id, read
+         FROM messages
+         WHERE sender_id = $1 OR receiver_id = $1
+       ) m
+       JOIN users u ON u.id = m.other_user_id
+       ORDER BY other_user_id, m.created_at DESC`,
+      [userId]
+    );
+    return result.rows.map((row: any) => ({
+      user_id: row.other_user_id,
+      user_login: row.other_user_login,
+      user_name: row.other_user_name,
+      last_message: {
+        id: row.last_message_id,
+        content: row.last_message_content,
+        created_at: row.last_message_time ? row.last_message_time.toISOString() : null,
+        sender_id: row.sender_id,
+        receiver_id: row.receiver_id,
+        read: row.read
+      },
+      unread_count: parseInt(row.unread_count) || 0
+    }));
+  } catch (error) {
+    console.error('Error fetching user conversations:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const createMessage = async (message: Omit<Message, 'id' | 'created_at'>): Promise<Message> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'INSERT INTO messages (sender_id, receiver_id, content, read) VALUES ($1, $2, $3, $4) RETURNING *',
+      [message.sender_id, message.receiver_id, message.content, message.read || false]
     );
     const row = result.rows[0];
     return {
       ...row,
-      timestamp: row.timestamp.toISOString()
+      created_at: row.created_at.toISOString()
     };
   } catch (error) {
     console.error('Error creating message:', error);
@@ -584,31 +643,44 @@ export const createMessage = async (message: Omit<Message, 'id' | 'timestamp'>):
   }
 };
 
-export const updateMessage = async (id: number, message: Partial<Omit<Message, 'id' | 'timestamp'>>): Promise<Message | null> => {
+// Mark messages as read
+export const markMessagesAsRead = async (senderId: number, receiverId: number): Promise<number> => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(
+      'UPDATE messages SET read = TRUE WHERE sender_id = $1 AND receiver_id = $2 AND read = FALSE',
+      [senderId, receiverId]
+    );
+    return result.rowCount || 0;
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const updateMessage = async (id: number, message: Partial<Omit<Message, 'id' | 'created_at'>>): Promise<Message | null> => {
   const client = await pool.connect();
   try {
     const fields = [];
     const values = [];
     let paramCount = 1;
 
-    if (message.from !== undefined) {
-      fields.push(`from_user = $${paramCount++}`);
-      values.push(message.from);
+    if (message.content !== undefined) {
+      fields.push(`content = $${paramCount++}`);
+      values.push(message.content);
     }
-    if (message.to !== undefined) {
-      fields.push(`to_user = $${paramCount++}`);
-      values.push(message.to);
-    }
-    if (message.text !== undefined) {
-      fields.push(`text = $${paramCount++}`);
-      values.push(message.text);
+    if (message.read !== undefined) {
+      fields.push(`read = $${paramCount++}`);
+      values.push(message.read);
     }
 
     if (fields.length === 0) return null;
 
     values.push(id);
     const result = await client.query(
-      `UPDATE messages SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING id, from_user as "from", to_user as "to", text, timestamp`,
+      `UPDATE messages SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
       values
     );
     if (result.rows.length === 0) return null;
@@ -616,7 +688,7 @@ export const updateMessage = async (id: number, message: Partial<Omit<Message, '
     const row = result.rows[0];
     return {
       ...row,
-      timestamp: row.timestamp.toISOString()
+      created_at: row.created_at.toISOString()
     };
   } catch (error) {
     console.error('Error updating message:', error);

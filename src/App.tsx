@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { SocketProvider } from './contexts/SocketContext';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
 import Peers from './pages/Peers';
@@ -58,9 +59,11 @@ function App() {
   return (
     <ThemeProvider>
       <UserProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <SocketProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </SocketProvider>
       </UserProvider>
     </ThemeProvider>
   );

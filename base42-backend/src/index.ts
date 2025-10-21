@@ -1,9 +1,11 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { initializeDatabase } from './services/db';
 import { initializeCache } from './services/cache';
+import { initializeSocketIO } from './services/socketService';
 import apiRoutes from './routes/api';
 import syncRoutes from './routes/sync';
 import authRoutes from './routes/auth';
@@ -12,10 +14,14 @@ import authRoutes from './routes/auth';
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -29,8 +35,12 @@ app.get('/ping', (req, res) => {
   res.json({ message: 'pong' });
 });
 
+// Initialize Socket.IO
+const io = initializeSocketIO(httpServer);
+console.log('Socket.IO initialized');
+
 // Start server
-app.listen(PORT, async () => {
+httpServer.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   
   // Initialize database

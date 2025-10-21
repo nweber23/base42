@@ -260,8 +260,18 @@ export const deleteEventCached = async (id: number): Promise<boolean> => {
 };
 
 // Cached Message operations
+const messageCacheKey = {
+  all: () => 'messages:all',
+  byId: (id: number) => `message:${id}`,
+  conversation: (userId1: number, userId2: number) => {
+    const [id1, id2] = [userId1, userId2].sort();
+    return `messages:conversation:${id1}:${id2}`;
+  },
+  userConversations: (userId: number) => `messages:conversations:${userId}`
+};
+
 export const getMessagesCached = async (): Promise<Message[]> => {
-  const cacheKey = getCacheKey.messages();
+  const cacheKey = messageCacheKey.all();
 
   let messages = await getCache<Message[]>(cacheKey);
 
@@ -274,7 +284,7 @@ export const getMessagesCached = async (): Promise<Message[]> => {
 };
 
 export const getMessageByIdCached = async (id: number): Promise<Message | null> => {
-  const cacheKey = getCacheKey.message(id);
+  const cacheKey = messageCacheKey.byId(id);
 
   let message = await getCache<Message>(cacheKey);
 
@@ -288,55 +298,73 @@ export const getMessageByIdCached = async (id: number): Promise<Message | null> 
   return message;
 };
 
-export const getMessagesByUserCached = async (username: string): Promise<Message[]> => {
-  const cacheKey = getCacheKey.messagesByUser(username);
+export const getConversationCached = async (userId1: number, userId2: number): Promise<Message[]> => {
+  const cacheKey = messageCacheKey.conversation(userId1, userId2);
 
   let messages = await getCache<Message[]>(cacheKey);
 
   if (!messages) {
-    messages = await db.getMessagesByUser(username);
-    await setCache(cacheKey, messages, LIST_TTL);
+    messages = await db.getConversation(userId1, userId2);
+    await setCache(cacheKey, messages, 60); // Cache for 1 minute for real-time feel
   }
 
   return messages;
 };
 
-export const createMessageCached = async (message: Omit<Message, 'id' | 'timestamp'>): Promise<Message> => {
+export const getUserConversationsCached = async (userId: number): Promise<any[]> => {
+  const cacheKey = messageCacheKey.userConversations(userId);
+
+  let conversations = await getCache<any[]>(cacheKey);
+
+  if (!conversations) {
+    conversations = await db.getUserConversations(userId);
+    await setCache(cacheKey, conversations, 60); // Cache for 1 minute
+  }
+
+  return conversations;
+};
+
+export const createMessageCached = async (message: Omit<Message, 'id' | 'created_at'>): Promise<Message> => {
   const newMessage = await db.createMessage(message);
 
   // Invalidate related caches
-  await deleteCache(getCacheKey.messages());
-  await deleteCache(getCacheKey.messagesByUser(message.from));
-  await deleteCache(getCacheKey.messagesByUser(message.to));
+  await deleteCache(messageCacheKey.all());
+  await deleteCache(messageCacheKey.conversation(message.sender_id, message.receiver_id));
+  await deleteCache(messageCacheKey.userConversations(message.sender_id));
+  await deleteCache(messageCacheKey.userConversations(message.receiver_id));
 
   // Cache the new message
-  await setCache(getCacheKey.message(newMessage.id), newMessage, ITEM_TTL);
+  await setCache(messageCacheKey.byId(newMessage.id), newMessage, ITEM_TTL);
 
   return newMessage;
 };
 
-export const updateMessageCached = async (id: number, message: Partial<Omit<Message, 'id' | 'timestamp'>>): Promise<Message | null> => {
+export const markMessagesAsReadCached = async (senderId: number, receiverId: number): Promise<number> => {
+  const count = await db.markMessagesAsRead(senderId, receiverId);
+
+  // Invalidate related caches
+  await deleteCache(messageCacheKey.conversation(senderId, receiverId));
+  await deleteCache(messageCacheKey.userConversations(senderId));
+  await deleteCache(messageCacheKey.userConversations(receiverId));
+
+  return count;
+};
+
+export const updateMessageCached = async (id: number, message: Partial<Omit<Message, 'id' | 'created_at'>>): Promise<Message | null> => {
   // Get original message to know which user caches to invalidate
   const originalMessage = await db.getMessageById(id);
   const updatedMessage = await db.updateMessage(id, message);
 
-  if (updatedMessage) {
+  if (updatedMessage && originalMessage) {
     // Invalidate related caches
-    await deleteCache(getCacheKey.messages());
-    await deleteCache(getCacheKey.message(id));
-
-    if (originalMessage) {
-      await deleteCache(getCacheKey.messagesByUser(originalMessage.from));
-      await deleteCache(getCacheKey.messagesByUser(originalMessage.to));
-    }
-
-    if (updatedMessage.from !== originalMessage?.from || updatedMessage.to !== originalMessage?.to) {
-      await deleteCache(getCacheKey.messagesByUser(updatedMessage.from));
-      await deleteCache(getCacheKey.messagesByUser(updatedMessage.to));
-    }
+    await deleteCache(messageCacheKey.all());
+    await deleteCache(messageCacheKey.byId(id));
+    await deleteCache(messageCacheKey.conversation(originalMessage.sender_id, originalMessage.receiver_id));
+    await deleteCache(messageCacheKey.userConversations(originalMessage.sender_id));
+    await deleteCache(messageCacheKey.userConversations(originalMessage.receiver_id));
 
     // Cache the updated message
-    await setCache(getCacheKey.message(updatedMessage.id), updatedMessage, ITEM_TTL);
+    await setCache(messageCacheKey.byId(updatedMessage.id), updatedMessage, ITEM_TTL);
   }
 
   return updatedMessage;
@@ -347,14 +375,13 @@ export const deleteMessageCached = async (id: number): Promise<boolean> => {
   const message = await db.getMessageById(id);
   const result = await db.deleteMessage(id);
 
-  if (result) {
+  if (result && message) {
     // Invalidate related caches
-    await deleteCache(getCacheKey.messages());
-    await deleteCache(getCacheKey.message(id));
-    if (message) {
-      await deleteCache(getCacheKey.messagesByUser(message.from));
-      await deleteCache(getCacheKey.messagesByUser(message.to));
-    }
+    await deleteCache(messageCacheKey.all());
+    await deleteCache(messageCacheKey.byId(id));
+    await deleteCache(messageCacheKey.conversation(message.sender_id, message.receiver_id));
+    await deleteCache(messageCacheKey.userConversations(message.sender_id));
+    await deleteCache(messageCacheKey.userConversations(message.receiver_id));
   }
 
   return result;

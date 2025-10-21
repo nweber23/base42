@@ -4,17 +4,16 @@ import { MessageController } from '../controllers/MessageController';
 const router = Router();
 const messageController = new MessageController();
 
-// Special message routes (must come before parameterized routes)
-router.get('/user/:username', messageController.getMessagesByUser.bind(messageController));
-router.get('/conversation/:user1/:user2', messageController.getConversation.bind(messageController));
-router.get('/sent/:username', messageController.getSentMessages.bind(messageController));
-router.get('/received/:username', messageController.getReceivedMessages.bind(messageController));
+// Get all conversations for a user
+router.get('/conversations', messageController.getConversations.bind(messageController));
 
-// Message CRUD routes
-router.get('/', messageController.getMessages.bind(messageController));
-router.get('/:id', messageController.getMessageById.bind(messageController));
-router.post('/', messageController.createMessage.bind(messageController));
-router.put('/:id', messageController.updateMessage.bind(messageController));
-router.delete('/:id', messageController.deleteMessage.bind(messageController));
+// Get conversation with a specific user
+router.get('/:userId', messageController.getConversation.bind(messageController));
+
+// Send a message to a user
+router.post('/:userId', messageController.sendMessage.bind(messageController));
+
+// Mark messages as read
+router.post('/:userId/read', messageController.markAsRead.bind(messageController));
 
 export default router;

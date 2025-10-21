@@ -20,12 +20,27 @@ export interface User {
 }
 
 export interface Message {
-  id: string;
-  senderId: number;
+  id: number;
+  sender_id: number;
+  receiver_id: number;
   content: string;
-  timestamp: string;
-  type: 'text' | 'image' | 'file';
-  isRead: boolean;
+  created_at: string;
+  read: boolean;
+}
+
+export interface Conversation {
+  user_id: number;
+  user_login: string;
+  user_name: string;
+  last_message: {
+    id: number;
+    content: string;
+    created_at: string;
+    sender_id: number;
+    receiver_id: number;
+    read: boolean;
+  };
+  unread_count: number;
 }
 
 export interface MessageThread {
